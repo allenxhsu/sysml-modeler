@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" data-app="sysml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SysML Modeler</title>
+<link rel="stylesheet" href="ui-kit/css/kit.css">
+<link rel="stylesheet" href="src/styles.css">
+<!-- Applied before first paint so the page never flashes unthemed. -->
+<script type="module">
+  import { initTheme } from './ui-kit/js/theme.js';
+  initTheme({ app: 'sysml' });
+</script>
+<script type="module" src="ui-kit/js/theme-picker.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header id="header" class="sc-header"></header>
+    <div id="body">
+      <aside id="left">
+        <div class="sc-tabs" id="left-tabs"></div>
+        <div class="pane tree" id="tree"></div>
+      </aside>
+      <main id="center">
+        <div class="sc-tabs doc-tabs" id="doc-tabs"></div>
+        <div id="stage">
+          <div id="palette" class="sc-panel"></div>
+          <div id="canvas-wrap" class="sc-hexgrid">
+            <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div id="inline-editor" hidden><input type="text" class="sc-input" spellcheck="false"></div>
+          </div>
+          <div id="view-wrap" hidden></div>
+          <div id="empty-state" hidden>
+            <div class="sc-panel sc-brackets">
+              <div class="sc-display">No diagram open</div>
+              <p class="sc-muted">Open one from the containment tree, or make one from the Diagrams menu.</p>
+            </div>
+          </div>
+        </div>
+        <div id="statusbar" class="sc-mono"></div>
+        <section id="bottom">
+          <div class="sc-tabs" id="bottom-tabs"></div>
+          <div id="bottom-body"></div>
+        </section>
+      </main>
+      <aside id="right">
+        <div class="sc-tabs" id="right-tabs"></div>
+        <div class="pane spec" id="spec"></div>
+      </aside>
+    </div>
+  </div>
+  <div id="modal-root"></div>
+  <input type="file" id="file-input" accept=".json,.xmi,.xml,.uml" hidden>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

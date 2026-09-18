@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 -16 930 572" width="930" height="572"><style>
+text{font-family:Helvetica, Arial, sans-serif;font-size:12px;fill:#111418;dominant-baseline:auto}
+.d-mono{font-family:Menlo, Consolas, monospace;font-size:11px;fill:#2d343c}
+.d-name{font-family:Helvetica, Arial, sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.04em}
+.d-italic{font-style:italic}
+.d-comp{font-size:10.5px;font-style:italic;fill:#5b6470}
+.d-frame{fill:none;stroke:#111418;stroke-width:1}
+.d-frame-tab{fill:#ffffff;stroke:#111418;stroke-width:1}
+.d-sym .d-shape{fill:#f4f8fd;stroke:#111418}
+.d-sym .d-rule,.d-sym .d-stick{stroke:#111418}
+.d-sym.c-b .d-shape{fill:#fdf8ee;stroke:#111418}
+.d-sym.c-b .d-rule,.d-sym.c-b .d-stick{stroke:#111418}
+.d-sym.c-c .d-shape{fill:#fbf3f6;stroke:#111418}
+.d-sym.c-c .d-rule,.d-sym.c-c .d-stick{stroke:#111418}
+.d-sym.c-n .d-shape{fill:#fffbe6;stroke:#5b6470}
+.d-sym.c-n .d-rule,.d-sym.c-n .d-stick{stroke:#5b6470}
+.d-shape{stroke-width:1.2}
+.d-shape.dashed{stroke-dasharray:6 4}
+.d-rule{stroke-width:.8;opacity:.55;fill:none}
+.d-stick{fill:none;stroke-width:1.5}
+.d-port{fill:#ffffff;stroke:#111418;stroke-width:1.2}
+.d-port-dir{fill:#111418;stroke:none}
+.d-line{fill:none;stroke:#2d343c;stroke-width:1.2}
+.d-line.dashed{stroke-dasharray:6 4}
+.d-head{fill:none;stroke:#2d343c;stroke-width:1.2}
+.d-head.filled{fill:#2d343c}
+.d-head.hollow{fill:#ffffff}
+.d-hit{fill:none;stroke:transparent;stroke-width:12}
+.d-label-bg{fill:#ffffff;opacity:.85}
+</style><rect x="4" y="-16" width="930" height="572" fill="#fff"/><rect class="d-frame" x="20" y="0" width="898" height="540"/><path class="d-frame-tab" d="M20 0h305.2v14l-10 10H20z"/><text class="d-mono" x="30" y="16">uc [package] Use cases [Vehicle use cases]</text><g class="d-symbols"><g class="d-sym " data-sym="sy_mu5zjqi0002ey1" transform="translate(230 60)"><rect class="d-shape" width="440" height="430"/><text class="d-name" x="220" y="20" text-anchor="middle">Vehicle</text></g><g class="d-sym c-c" data-sym="sy_mu5zjqi0002f5z" transform="translate(80 150)"><rect x="0" y="0" width="60" height="92" fill="transparent" stroke="none"/><circle class="d-stick" cx="30" cy="12" r="9"/><path class="d-stick" d="M30 21V50M12 31H48M30 50L15 72M30 50L45 72"/><text class="d-name" x="30" y="88" text-anchor="middle">Driver</text></g><g class="d-sym c-c" data-sym="sy_mu5zjqi0002gs8" transform="translate(760 340)"><rect x="0" y="0" width="108" height="92" fill="transparent" stroke="none"/><circle class="d-stick" cx="54" cy="12" r="9"/><path class="d-stick" d="M54 21V50M36 31H72M54 50L39 72M54 50L69 72"/><text class="d-name" x="54" y="88" text-anchor="middle">Charging station</text></g><g class="d-sym c-c" data-sym="sy_mu5zjqi0002hb1" transform="translate(270 110)"><ellipse class="d-shape" cx="75" cy="32" rx="75" ry="32"/><text class="d-name" x="75" y="36" text-anchor="middle">Drive vehicle</text></g><g class="d-sym c-c" data-sym="sy_mu5zjqi0002jpt" transform="translate(460 230)"><ellipse class="d-shape" cx="90.5" cy="32" rx="90.5" ry="32"/><text class="d-name" x="90.5" y="36" text-anchor="middle">Authenticate driver</text></g><g class="d-sym c-c" data-sym="sy_mu5zjqi0002lgc" transform="translate(250 250)"><ellipse class="d-shape" cx="101" cy="32" rx="101" ry="32"/><text class="d-name" x="101" y="36" text-anchor="middle">Recover braking energy</text></g><g class="d-sym c-c" data-sym="sy_mu5zjqi0002n8w" transform="translate(370 390)"><ellipse class="d-shape" cx="76.5" cy="32" rx="76.5" ry="32"/><text class="d-name" x="76.5" y="36" text-anchor="middle">Charge battery</text></g></g><g class="d-paths"><g class="d-path" data-path="pa_mu5zjqi0002iww"><path class="d-hit" d="M140 181L205 181L205 142L270 142"/><path class="d-line" d="M140 181L205 181L205 142L270 142"/></g><g class="d-path" data-path="pa_mu5zjqi0002kfw"><path class="d-hit" d="M370 174L370 202L551 202L551 230"/><path class="d-line dashed" d="M370 174L370 202L551 202L551 230"/><path class="d-head" transform="translate(551 230) rotate(90)" d="M-11 -5L0 0L-11 5"/><rect class="d-label-bg" x="426.8" y="184" width="67.4" height="15"/><text class="d-mono" x="460.5" y="195" text-anchor="middle">«include»</text></g><g class="d-path" data-path="pa_mu5zjqi0002m3l"><path class="d-hit" d="M351 250L351 212L320 212L320 174"/><path class="d-line dashed" d="M351 250L351 212L320 212L320 174"/><path class="d-head" transform="translate(320 174) rotate(-90)" d="M-11 -5L0 0L-11 5"/><rect class="d-label-bg" x="357" y="224" width="60.8" height="15"/><text class="d-mono" x="387.4" y="235" text-anchor="middle">«extend»</text></g><g class="d-path" data-path="pa_mu5zjqi0002oj1"><path class="d-hit" d="M140 211L255 211L255 422L370 422"/><path class="d-line" d="M140 211L255 211L255 422L370 422"/></g><g class="d-path" data-path="pa_mu5zjqi0002pme"><path class="d-hit" d="M760 386L642 386L642 422L523 422"/><path class="d-line" d="M760 386L642 386L642 422L523 422"/></g></g><g class="d-ports"></g></svg>
