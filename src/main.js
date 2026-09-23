@@ -105,7 +105,7 @@ function start() {
   if (hosted) {
     subscribe(reportToHost);
     loadModel(createModel('Untitled model'));
-    initHost({ load: loadText, command: hostCommand, saved: (name) => markSaved(name) });
+    initHost({ name: 'sysml', load: loadText, command: hostCommand, saved: (name) => markSaved(name) });
     return;
   }
   window.addEventListener('beforeunload', (e) => { if (store.ui.dirty) { e.preventDefault(); e.returnValue = ''; } });

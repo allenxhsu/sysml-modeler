@@ -2,8 +2,16 @@
 
 A native shell around the [web app](../README.md). The model, the diagrams and
 every editing rule stay in `../src` — one codebase, so the Mac app and the
-browser can never disagree about a diagram. This package supplies what a
-browser tab cannot: documents, the menu bar, save panels and PDF.
+browser can never disagree about a diagram.
+
+The shell itself — documents, the menu bar, save panels, PDF, the `WKWebView`
+and the message channel — is the shared **ToolkitShell** package in
+[`../../shell-kit`](../../shell-kit/README.md), which this repo depends on by
+path. What is left here is the app: `App.swift` (a `ShellConfig` and an empty
+`WebDocument` subclass), `MainMenu.swift` (the menu table), the test that
+checks the menu against the page, and the bundle script. The page's half of
+the bridge, `src/host.js`, is a vendored copy of `shell-kit/js/host.js`;
+`build-app.sh` refuses to bundle a stale copy.
 
 (IDEF0's Mac app is a full Swift port of its model layer. This one is not; if a
 `sysml` command-line tool is wanted later, the DOM-free `src/model` and
@@ -22,9 +30,11 @@ macos/scripts/build-app.sh
 
 produces `macos/build/SysML Modeler.app` (under 1 MB), ad-hoc signed so a
 locally built copy launches without Gatekeeper friction. `CONFIG=debug`,
-`OUT_DIR=…` and `VERSION=…` steer it, as in IDEF0. The script copies
-`index.html`, `src/` and the parts of `ui-kit/` the page loads into the bundle,
-so **rebuild after changing the web app**.
+`OUT_DIR=…` and `VERSION=…` steer it, as in IDEF0. The script first runs the
+kits' copy checks (`ui-kit`, `shell-kit`, `sync-kit` — skipped while a kit has
+no copy script yet), then copies `index.html`, `src/` and the parts of
+`ui-kit/` the page loads into the bundle, so **rebuild after changing the web
+app**. To refresh the vendored bridge: `node ../shell-kit/scripts/copy-into.mjs src/host.js`.
 
 The app has to run as a bundle: `NSDocument` reads the document types it can
 open from `Info.plist`. Under `swift run` the window still comes up — it serves
@@ -34,9 +44,9 @@ the web app straight from the repository — but Open and Save are not available
 cd macos && swift test
 ```
 
-checks that every menu command id exists in the page's `COMMANDS` table, that
-the scheme handler serves nothing outside the web root, and the save-name and
-XML-sniffing rules.
+checks that every menu command id exists in the page's `COMMANDS` table and
+that the kit serves this repository. The shell's own rules (path guard, MIME
+types, save names, XML sniffing, menu helpers) are tested in shell-kit.
 
 ## How the two halves meet
 
@@ -44,8 +54,8 @@ The page is served from a custom scheme, `sysml-app://app/…` — ES modules wi
 not load from `file://`, and a real origin also gives the page its own
 `localStorage`, where the shared appearance preference lives.
 
-`src/host.js` is the page's half of the bridge; `EditorWindowController.swift`
-is the app's.
+`src/host.js` is the page's half of the bridge; shell-kit's
+`EditorWindowController.swift` is the app's.
 
 | Page → app | |
 |---|---|

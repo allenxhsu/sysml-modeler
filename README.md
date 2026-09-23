@@ -32,7 +32,27 @@ macos/scripts/build-app.sh
 
 builds `macos/build/SysML Modeler.app`: a native shell that hosts this same web
 app, with document windows, a real menu bar, Finder file opening, native save
-panels and vector PDF export. See [macos/README.md](macos/README.md).
+panels and vector PDF export. The shell is the shared `../shell-kit` package;
+see [macos/README.md](macos/README.md).
+
+## Shared kits
+
+Sibling repos this app vendors, the suite convention: a copy lives here, and
+each kit's `scripts/copy-into.mjs --check` (run by `macos/scripts/build-app.sh`)
+reports drift.
+
+| Kit | Copy here | What it is |
+|---|---|---|
+| `../ui-kit` | `ui-kit/` | the HUD interface: tokens, classes, fonts, theme picker |
+| `../shell-kit` | `src/host.js` | the macOS shell (Swift, by path) and the page's bridge |
+| `../sync-kit` | `sync-kit/js/` (not yet) | record sync between devices |
+
+Sync is planned at document level first: one model = one record
+`{ id, type: 'document', format: 'sysml-modeler', name, body, updatedAt, deletedAt, origin }`
+in workspace `sysml`, the body being exactly what `File ▸ Save` writes, applied
+from the server only when there are no unsaved edits. The containment tree —
+each element exists once, and diagrams only point at elements — makes
+per-element records the natural next step after that.
 
 ## The idea it is built on
 
@@ -142,11 +162,11 @@ src/model/layout.js    symbol content and size, port placement, path routing —
 src/model/sample.js    the worked example
 src/state/store.js     state, snapshot undo/redo, autosave
 src/state/actions.js   editing commands shared by canvas, tree, panels and menus
-src/host.js            the page's half of the bridge to the macOS app (inert in a browser)
+src/host.js            vendored from ../shell-kit: the page's half of the bridge to the macOS app (inert in a browser)
 src/io/                json (native), xmi, exportImage
 src/ui/                render (diagram → SVG markup), canvas, tree, spec, bottom, tables, toolbar, dialog
 ui-kit/                a copy of the shared kit, as in IDEF0
-macos/                 the macOS app: a Swift package and its build script
+macos/                 the macOS app: config + menu table on ../shell-kit's ToolkitShell, and its build script
 ```
 
 `model/` and `io/` never touch the DOM, which is what lets the tests — and a
