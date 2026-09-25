@@ -6,7 +6,7 @@ import ToolkitShell
 enum MainMenu {
     static func build() -> NSMenu {
         ShellMenu.mainMenu(
-            appMenuExtras: [ShellMenu.web("Appearance…", "view.appearance", ",")],
+            appMenuExtras: [ShellMenu.web("Settings…", "view.appearance", ",")] + ShellMenu.portalItems(),
             menus: [
                 ShellMenu.submenu("File", ShellMenu.documentItems() + [
                     ShellMenu.web("Open the Sample Model", "file.sample"),

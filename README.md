@@ -45,14 +45,42 @@ reports drift.
 |---|---|---|
 | `../ui-kit` | `ui-kit/` | the HUD interface: tokens, classes, fonts, theme picker |
 | `../shell-kit` | `src/host.js` | the macOS shell (Swift, by path) and the page's bridge |
-| `../sync-kit` | `sync-kit/js/` (not yet) | record sync between devices |
+| `../sync-kit` | `sync-kit/` | record sync between devices, and the Portal session |
 
-Sync is planned at document level first: one model = one record
+## Sync
+
+One model is one record in workspace `sysml`:
 `{ id, type: 'document', format: 'sysml-modeler', name, body, updatedAt, deletedAt, origin }`
-in workspace `sysml`, the body being exactly what `File ▸ Save` writes, applied
-from the server only when there are no unsaved edits. The containment tree —
-each element exists once, and diagrams only point at elements — makes
-per-element records the natural next step after that.
+— `id` is the model's root package id (the file carries it), `body` is exactly
+what `File ▸ Save` writes, `origin` is a per-device id. `src/state/sync.js` is
+the only module that imports sync-kit. Every committed edit is written to the
+device's record store (IndexedDB `sysml-modeler`, `localStorage` where there is
+none) and, when sync is on, sent shortly after; the model also syncs every 30 s,
+when the window is focused, and after each save. A newer version of the open
+model from another device replaces it only while nothing here is unsaved;
+otherwise both timestamps are shown and you are asked. **Settings ▸ Models on
+the shelf** lists every model the workspace holds, so a second device can open
+what the first one made.
+
+Two ways to reach a server — outside the Portal nothing changes:
+
+- **Typed in.** Settings ▸ Sync: the server's origin (or workspace URL), a
+  device token, and a switch. A paired Mac fills the first two in itself.
+- **The Portal.** Served at `/sysml/` on the Portal's origin, the page reads
+  its id from the injected `<meta name="toolkit-portal">`, asks `/auth/me`
+  which workspace the session reaches, and syncs with the session cookie — no
+  URL, no token; Settings says *Signed in via the toolkit*. The Portal's bar
+  (`<sc-portal-bar>`) sits above the app, and a 401 turns the status readout
+  and the bar into *Sign in*. `toolkit-app.json` is the contract the Portal
+  builds from; `tests`, `doc`, `macos` and `serve.sh` stay out of its static set.
+
+Every storage name carries the app prefix (`sysml-modeler:autosave`,
+`sysml-modeler:sync`, `sysml-modeler:deviceId`, IndexedDB `sysml-modeler`),
+because on the Portal nine apps share one origin.
+
+Not split into per-element records yet. The containment tree — each element
+exists once, and diagrams only point at elements — is what makes that the
+natural next step.
 
 ## The idea it is built on
 

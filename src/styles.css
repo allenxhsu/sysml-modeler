@@ -1,12 +1,6 @@
 /* App layout. Everything reusable comes from ../ui-kit; diagram colours are
    generated from the kit tokens in ui/render.js. */
 
-/* App identity colour; belongs in ui-kit/tokens/tokens.json once the kit adopts the app. */
-[data-app="sysml"] {
-  --sc-app: #e0719a;
-  --sc-app-rgb: 224 113 154;
-}
-
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
@@ -98,6 +92,12 @@ body { overflow: hidden; background: var(--sc-bg); color: var(--sc-text); font-f
 #statusbar .status-hint { color: var(--sc-text); overflow: hidden; text-overflow: ellipsis; }
 #statusbar .ok { color: var(--sc-success); }
 #statusbar .warn { color: var(--sc-warning); }
+#statusbar sc-sync-status { font-size: 11px; }
+.small { font-size: 12.5px; line-height: 1.5; margin: 0; }
+.field-hint { font-size: 11.5px; }
+.shelf { display: grid; gap: 4px; max-height: 180px; overflow-y: auto; }
+.link.is-open { color: var(--sc-accent); }
+.sc-dialog-body sc-theme-picker { display: block; }
 
 #bottom { flex: none; height: 170px; display: flex; flex-direction: column; background: var(--sc-panel); border-top: 1px solid var(--sc-line-strong); }
 #bottom-body { flex: 1; min-height: 0; overflow-y: auto; }

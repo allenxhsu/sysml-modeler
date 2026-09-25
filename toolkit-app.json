@@ -1,0 +1,13 @@
+{
+  "id": "sysml",
+  "name": "SysML Modeler",
+  "mark": "SY",
+  "colorToken": "sysml",
+  "workspace": "sysml",
+  "static": { "dir": ".", "build": null, "include": ["index.html", "src/**", "ui-kit/**", "sync-kit/**"] },
+  "entry": "index.html",
+  "offline": true,
+  "csp": null,
+  "connectScheme": "sysml",
+  "pwa": { "shortName": "SysML", "themeColor": "#03060A", "display": "standalone" }
+}

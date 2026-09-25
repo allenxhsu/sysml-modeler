@@ -6,7 +6,7 @@ let openCount = 0;
 export const modalOpen = () => openCount > 0;
 
 /** `build(close)` returns the dialog body; the promise resolves with whatever `close` is given. */
-function open(title, build, { dismissable = true } = {}) {
+export function openDialog(title, build, { dismissable = true } = {}) {
   return new Promise((resolve) => {
     const close = (value) => {
       overlay.remove();
@@ -26,18 +26,18 @@ function open(title, build, { dismissable = true } = {}) {
   });
 }
 
-const foot = (...buttons) => el('div', { class: 'dialog-foot' }, ...buttons);
-const button = (text, onclick, variant = '') => el('button', { class: `sc-button ${variant}`, text, onclick });
+export const foot = (...buttons) => el('div', { class: 'dialog-foot' }, ...buttons);
+export const button = (text, onclick, variant = '') => el('button', { class: `sc-button ${variant}`, text, onclick });
 
 export function confirmDialog(title, body, okLabel = 'Delete') {
-  return open(title, (close) => [
+  return openDialog(title, (close) => [
     el('p', { text: body }),
     foot(el('button', { class: 'sc-button', text: 'Cancel', 'data-autofocus': '', onclick: () => close(false) }), button(okLabel, () => close(true), 'sc-button--danger')),
   ]);
 }
 
 export function promptText(title, body, value = '') {
-  return open(title, (close) => {
+  return openDialog(title, (close) => {
     const input = el('input', { class: 'sc-input', type: 'text', value, 'data-autofocus': '' });
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') close(input.value); });
     setTimeout(() => input.select(), 0);
@@ -46,7 +46,7 @@ export function promptText(title, body, value = '') {
 }
 
 export function showText(title, text) {
-  return open(title, (close) => [el('pre', { class: 'dialog-pre', text }), foot(el('button', { class: 'sc-button', text: 'Close', 'data-autofocus': '', onclick: () => close(null) }))]);
+  return openDialog(title, (close) => [el('pre', { class: 'dialog-pre', text }), foot(el('button', { class: 'sc-button', text: 'Close', 'data-autofocus': '', onclick: () => close(null) }))]);
 }
 
 /**
@@ -54,7 +54,7 @@ export function showText(title, text) {
  * Resolves { value } for an existing choice, { create: name } for a new one, null when cancelled.
  */
 export function pickOrCreate(title, body, options, createLabel) {
-  return open(title, (close) => {
+  return openDialog(title, (close) => {
     const select = el('select', { class: 'sc-select', 'data-autofocus': '' },
       ...options.map((o) => el('option', { value: o.value, text: o.label })),
       el('option', { value: '', text: `＋ ${createLabel}…` }));
@@ -75,7 +75,7 @@ export function pickOrCreate(title, body, options, createLabel) {
 
 /** A form of selects. `fields`: [{ key, label, options: [{value,label}], value }]. Resolves { key: value } or null. */
 export function formDialog(title, fields, okLabel = 'Create') {
-  return open(title, (close) => {
+  return openDialog(title, (close) => {
     const inputs = {};
     const rows = fields.map((f) => {
       const input = f.options

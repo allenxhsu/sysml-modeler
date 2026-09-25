@@ -15,6 +15,8 @@ import { renderBottom, checkBadge } from './ui/bottom.js';
 import { renderView } from './ui/tables.js';
 import { initHeader, renderHeader, renderDocTabs, renderPalette, renderStatus, saveModel, openFile, loadText, COMMANDS } from './ui/toolbar.js';
 import { modalOpen } from './ui/dialog.js';
+import { initSync, syncAfterSave, adoptRemoteSettings } from './state/sync.js';
+import { portalApp } from '../sync-kit/js/portal.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -105,7 +107,14 @@ function start() {
   if (hosted) {
     subscribe(reportToHost);
     loadModel(createModel('Untitled model'));
-    initHost({ name: 'sysml', load: loadText, command: hostCommand, saved: (name) => markSaved(name) });
+    initHost({
+      name: 'sysml', load: loadText, command: hostCommand,
+      saved: (name) => { markSaved(name); syncAfterSave(); },
+      // A paired Mac hands over the Portal's URL and its device token: the same
+      // two values the Settings dialog holds, applied the same way.
+      remote: ({ url, token }) => { void adoptRemoteSettings({ url, token }); },
+    });
+    startSync();
     return;
   }
   window.addEventListener('beforeunload', (e) => { if (store.ui.dirty) { e.preventDefault(); e.returnValue = ''; } });
@@ -113,6 +122,19 @@ function start() {
   const saved = readAutosave();
   if (saved) { try { model = parse(JSON.stringify(saved)).model; } catch { model = null; } }
   loadModel(model || sampleModel());
+  startSync();
+}
+
+// On the Portal the page carries the Portal's bar: the app switcher, the account, Sign in when the session is gone.
+function mountPortalBar() {
+  if (portalApp() !== 'sysml') return;
+  document.getElementById('app').prepend(el('sc-portal-bar', { app: 'sysml' }));
+}
+
+// After the first model is on screen: the record store, the engine and the timer.
+function startSync() {
+  mountPortalBar();
+  initSync().catch((err) => console.error('sync could not start', err));
 }
 
 start();

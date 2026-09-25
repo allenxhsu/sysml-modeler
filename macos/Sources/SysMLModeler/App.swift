@@ -14,7 +14,11 @@ enum SysMLApp {
     static let config = ShellConfig(
         appName: "SysML Modeler", handlerName: "sysml", scheme: "sysml-app", fileSuffix: ".sysml.json",
         documentNoun: "model", importedTypes: ["public.xml", "org.omg.xmi"], defaultPDFName: "diagrams.pdf",
-        repositoryRoot: repositoryRoot, windowFrameAutosaveName: "SysMLEditor")
+        repositoryRoot: repositoryRoot, windowFrameAutosaveName: "SysMLEditor",
+        // Pairing with the toolkit Portal: the scheme is toolkit-app.json's
+        // connectScheme. No default origin — the person types the Portal's
+        // address in the sign-in sheet the first time, and it is remembered.
+        connectScheme: "sysml")
 }
 
 @main

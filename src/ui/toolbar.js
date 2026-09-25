@@ -13,6 +13,8 @@ import { showMenu, confirmDialog, showText, formDialog } from './dialog.js';
 import { zoomFit, zoomBy, selectAll } from './canvas.js';
 import { RULES } from '../model/validate.js';
 import { hosted, post } from '../host.js';
+import { settingsDialog } from './settings.js';
+import { syncAfterSave, syncConfigured } from '../state/sync.js';
 
 // ---------------------------------------------------------------- file commands
 
@@ -32,6 +34,7 @@ export function saveModel() {
   const name = store.ui.fileName || `${slugify(store.model.name)}${FILE_EXT}`;
   downloadText(serialize(store.model), name, 'application/json');
   markSaved(name);
+  syncAfterSave();
 }
 
 /** Put a file's text into this window: a native model, or XMI from another tool. */
@@ -84,10 +87,7 @@ async function newMatrix() {
   createDiagram('matrix', store.ui.selection?.elementId, { name: `${REL_KINDS[v.relKind].label} matrix`, relKind: v.relKind, rowKind: p.rows, colKind: p.cols });
 }
 
-function appearance() {
-  showMenu(window.innerWidth - 340, 56, [{ note: 'Appearance is shared with the other toolkit apps.' }]);
-  document.querySelector('.pop-menu').append(el('sc-theme-picker'));
-}
+function appearance() { settingsDialog(); }
 
 function help() {
   showText('Working with the modeler', [
@@ -150,7 +150,7 @@ const MENUS = {
   ],
   View: () => [
     { label: 'Zoom in', run: run('view.zoomIn') }, { label: 'Zoom out', run: run('view.zoomOut') }, { label: 'Zoom to fit', run: run('view.zoomFit') }, '-',
-    { label: 'Appearance…', run: run('view.appearance') },
+    { label: 'Settings…', run: run('view.appearance') },
   ],
   Diagrams: () => [
     ...Object.entries(DIAGRAM_KINDS).filter(([, m]) => !m.view).map(([kind, m]) => ({ label: `New ${m.label.toLowerCase()}`, run: run(`diagram.${kind}`) })), '-',
@@ -245,4 +245,5 @@ export function renderStatus(root) {
   root.append(el('span', { class: 'status-tool', text: toolName }), el('span', { class: 'status-hint', text: ui.hint || '' }), el('span', { class: 'sc-spacer' }));
   if (d?.symbols) root.append(el('span', { text: `${d.symbols.length} symbols · ${d.paths.length} paths` }), el('span', { text: `zoom ${Math.round((ui.views[d.id]?.scale || 1) * 100)}%` }));
   root.append(el('span', { class: ui.dirty ? 'warn' : 'ok', text: ui.dirty ? '● unsaved' : '● saved' }));
+  if (syncConfigured()) root.append(el('sc-sync-status', { 'no-button': '' }));
 }

@@ -28,7 +28,9 @@ check_copy() {  # <kit dir> <copy-script args…>
 }
 check_copy ui-kit ui-kit
 check_copy shell-kit src/host.js
-[ -d "$REPO/sync-kit" ] && check_copy sync-kit sync-kit/js
+[ -d "$REPO/sync-kit" ] && check_copy sync-kit sync-kit
+# Pairing ends in a sysml://connect?… link that Launch Services delivers only to a bundle claiming the scheme.
+URL_TYPES="$(node "$REPO/../shell-kit/scripts/url-types.mjs" sysml 'SysML Modeler')"
 
 swift build --package-path "$PKG" -c "$CONFIG" --product SysMLModeler
 BIN_DIR="$(swift build --package-path "$PKG" -c "$CONFIG" --show-bin-path)"
@@ -44,6 +46,7 @@ cp "$REPO/index.html" "$WEB/"
 cp -R "$REPO/src" "$WEB/src"
 mkdir -p "$WEB/ui-kit"
 for part in css js fonts; do cp -R "$REPO/ui-kit/$part" "$WEB/ui-kit/$part"; done
+mkdir -p "$WEB/sync-kit" && cp -R "$REPO/sync-kit/js" "$WEB/sync-kit/js"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -91,9 +94,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
       <dict><key>public.filename-extension</key><array><string>xmi</string><string>uml</string></array></dict>
     </dict>
   </array>
+$URL_TYPES
 </dict>
 </plist>
 PLIST
+node "$REPO/../shell-kit/scripts/url-types.mjs" --check "$APP/Contents/Info.plist" sysml
 
 # An ad-hoc signature, so macOS will launch a locally built bundle.
 codesign --force --sign - "$APP" >/dev/null

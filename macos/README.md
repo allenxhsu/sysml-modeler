@@ -87,6 +87,19 @@ It registers as an **Alternate** handler for `public.json` and `public.xml`: it
 can open either, but macOS will not make it the default opener for all JSON.
 Choose it per file with Finder's *Open With*.
 
+## Signing in to the toolkit
+
+`SysML Modeler ▸ Sign in to the toolkit…` opens shell-kit's sign-in sheet:
+type the Portal's origin, and the Portal's `/devices/pair?scheme=sysml` page
+signs you in with Google, mints a device token and comes back through
+`sysml://connect?url=…&token=…` — the bundle registers that scheme
+(`build-app.sh` writes the URL type and checks it). The shell keeps the pair in
+the Keychain and hands the page `remote({url, token})`, which the sync module
+applies exactly as if typed into Settings ▸ Sync. *Sign out* revokes the device
+at the Portal and forgets the pair. The page then syncs workspace `sysml` with
+that token; the server has to allow the app's origin, `sysml-app://app`, in
+`ALLOWED_ORIGINS`.
+
 ## Keys
 
 `⌘Z` / `⇧⌘Z` undo and redo the model — or the text, while a text field has the
