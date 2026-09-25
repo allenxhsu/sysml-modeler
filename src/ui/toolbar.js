@@ -14,7 +14,7 @@ import { zoomFit, zoomBy, selectAll } from './canvas.js';
 import { RULES } from '../model/validate.js';
 import { hosted, post } from '../host.js';
 import { settingsDialog } from './settings.js';
-import { syncAfterSave, syncConfigured } from '../state/sync.js';
+import { syncAfterSave, syncConfigured, exportEverything, importEverything } from '../state/sync.js';
 
 // ---------------------------------------------------------------- file commands
 
@@ -65,6 +65,27 @@ export async function openFile() {
   input.onchange = async () => {
     const file = input.files[0];
     if (file) loadText(await file.text(), file.name);
+  };
+  input.click();
+}
+
+/** Every record and tombstone on this device, as one file; and the way back in. */
+async function exportAll() {
+  const r = await exportEverything();
+  if (r) hint(`Exported ${r.count} record${r.count === 1 ? '' : 's'} to ${r.name}.`);
+}
+function importAll() {
+  const input = document.getElementById('file-input');
+  input.value = '';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const t = await importEverything(await file.text());
+      showText('Import finished', `${t.added} added, ${t.updated} updated, ${t.unchanged} already current${t.invalid ? `, ${t.invalid} skipped as not records` : ''}.\nThis device now holds ${t.total} records, tombstones included.`);
+    } catch (err) {
+      showText('The file could not be imported', err.message);
+    }
   };
   input.click();
 }
@@ -120,6 +141,7 @@ const exportAllPdf = () => { try { printDiagrams(store.model, canvasDiagrams());
 export const COMMANDS = {
   'file.new': newModel, 'file.open': openFile, 'file.sample': openSample, 'file.save': saveModel,
   'file.exportXmi': () => exportXmiFile(true), 'file.exportXmiModel': () => exportXmiFile(false),
+  'file.exportAll': exportAll, 'file.importAll': importAll,
   'edit.undo': undo, 'edit.redo': redo, 'edit.selectAll': selectAll,
   'edit.remove': removeSelectionFromDiagram, 'edit.delete': deleteSelectionFromModel,
   'view.zoomIn': () => zoomBy(1.25), 'view.zoomOut': () => zoomBy(0.8), 'view.zoomFit': zoomFit, 'view.appearance': appearance,
@@ -139,7 +161,9 @@ const MENUS = {
     { label: 'Save', key: '⌘S', run: run('file.save') }, '-',
     { label: 'Import XMI…', run: run('file.open') },
     { label: 'Export XMI (model and diagrams)', run: run('file.exportXmi') },
-    { label: 'Export XMI (model only, for other tools)', run: run('file.exportXmiModel') },
+    { label: 'Export XMI (model only, for other tools)', run: run('file.exportXmiModel') }, '-',
+    { label: 'Export everything (all records)…', run: run('file.exportAll') },
+    { label: 'Import everything…', run: run('file.importAll') },
   ],
   Edit: () => [
     { label: `Undo${canUndo() ? ` ${store._undo[store._undo.length - 1].label.toLowerCase()}` : ''}`, key: '⌘Z', disabled: !canUndo(), run: undo },

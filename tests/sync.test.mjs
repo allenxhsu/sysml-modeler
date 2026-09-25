@@ -36,3 +36,32 @@ test('the contract file agrees with the sync module', () => {
   assert.ok(contract.static.include.includes('sync-kit/**'));
   for (const excluded of ['tests', 'doc', 'macos', 'serve.sh']) assert.ok(!contract.static.include.some((p) => p.startsWith(excluded)), excluded);
 });
+
+test('import merges by last write wins and reports what it did', () => {
+  const { mergeIncoming, EXPORT_FORMAT } = sync;
+  const local = [
+    { id: 'a', updatedAt: 10, origin: 'x', body: 'old' },
+    { id: 'b', updatedAt: 20, origin: 'x', body: 'mine' },
+    { id: 'c', updatedAt: 5, origin: 'x', deletedAt: null, body: 'c' },
+  ];
+  const incoming = [
+    { id: 'a', updatedAt: 11, origin: 'y', body: 'new' },           // newer: updated
+    { id: 'b', updatedAt: 20, origin: 'w', body: 'theirs' },        // tie: origin 'x' > 'w', mine stays
+    { id: 'c', updatedAt: 6, origin: 'y', deletedAt: 6, body: 'c' }, // a tombstone travels
+    { id: 'd', updatedAt: 1, origin: 'y', body: 'd' },              // added
+    { updatedAt: 1 }, { id: 'e' },                                  // not records
+  ];
+  const { writes, tally } = mergeIncoming(local, incoming);
+  assert.deepEqual(tally, { added: 1, updated: 2, unchanged: 1, invalid: 2 });
+  assert.deepEqual(writes.map((w) => [w.id, w.body, w.deletedAt ?? null]), [['a', 'new', null], ['c', 'c', 6], ['d', 'd', null]]);
+  assert.equal(EXPORT_FORMAT, 'sysml-modeler-records');
+  // Importing an export of the same store changes nothing.
+  assert.equal(mergeIncoming(local, local).writes.length, 0);
+});
+
+test('records live in the record store, never in localStorage', () => {
+  const storeSource = readFileSync(new URL('../src/state/store.js', import.meta.url), 'utf8');
+  assert.ok(!/localStorage\.setItem/.test(storeSource), 'store.js writes nothing to localStorage');
+  const syncSource = readFileSync(new URL('../src/state/sync.js', import.meta.url), 'utf8');
+  for (const m of syncSource.matchAll(/localStorage\.setItem\(([^,]+)/g)) assert.match(m[1], /^key$/, 'only the settings/device helpers write');
+});

@@ -65,7 +65,6 @@ function changed() {
   store.issues = validate(store.model);
   store.ui.dirty = true;
   repairUi();
-  autosave();
 }
 
 /**
@@ -151,7 +150,6 @@ export function loadModel(model, fileName = null) {
     openTabs: first ? [first.id] : [], currentDiagramId: first?.id || null, selection: null, tool: 'select',
     pending: null, views: {}, fileName, dirty: false, hint: '', collapsed: {},
   });
-  autosave();
   emit();
 }
 
@@ -192,13 +190,14 @@ export function selectElement(elementId, { reveal = false } = {}) {
   emit();
 }
 
-// In the macOS app each window is a document and the app saves it; one shared
-// browser autosave would only make windows overwrite each other.
-function autosave() {
-  if (hosted) return;
-  try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(store.model)); } catch { /* private mode, quota, or no localStorage */ }
-}
-export function readAutosave() {
+// The model no longer autosaves to localStorage: every committed edit goes to
+// the record store (IndexedDB) through state/sync.js, which also persists it.
+// What is left here is the one-time move of an autosave an older build left
+// behind: read it, and forget it only once the record store holds the model.
+export function readLegacyAutosave() {
   if (hosted) return null;
   try { return JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null'); } catch { return null; }
+}
+export function forgetLegacyAutosave() {
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* nothing to forget */ }
 }

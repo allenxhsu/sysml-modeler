@@ -74,6 +74,23 @@ Two ways to reach a server — outside the Portal nothing changes:
   and the bar into *Sign in*. `toolkit-app.json` is the contract the Portal
   builds from; `tests`, `doc`, `macos` and `serve.sh` stay out of its static set.
 
+**Where the data lives.** Every committed edit is written to the record store
+in IndexedDB (`sysml-modeler`) — there is no localStorage autosave any more; a
+copy an older build left there is moved across once, and forgotten only after
+it reads back. `localStorage` keeps settings, the device id and the theme.
+On start and whenever sync is switched on the app asks the browser to keep the
+origin's storage (`navigator.storage.persist()` — sync-kit has no persistence
+helper yet); Settings ▸ Storage shows **Persisted** or **At risk** with the
+advice (install the app from the browser menu; on iPhone add it to the Home
+Screen), the local live/deleted counts and space, and the server's record count
+from `/sync/health` beside them. Chrome grants persistence silently only to an
+installed or otherwise engaged origin, so a plain tab reads *At risk* until then.
+
+**Export and import.** `File ▸ Export everything` writes one JSON file
+(`sysml-modeler-records`) of every record and tombstone on this device;
+`File ▸ Import everything` merges one back by the same last-write-wins rule a
+sync uses, so a copy can live anywhere without the server.
+
 Every storage name carries the app prefix (`sysml-modeler:autosave`,
 `sysml-modeler:sync`, `sysml-modeler:deviceId`, IndexedDB `sysml-modeler`),
 because on the Portal nine apps share one origin.

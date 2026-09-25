@@ -1,10 +1,10 @@
 // Wires the store to the panels and owns the global keyboard shortcuts.
 
 import { el, clear } from './util.js';
-import { store, subscribe, set, undo, redo, loadModel, markSaved, readAutosave, modelRevision } from './state/store.js';
+import { store, subscribe, set, undo, redo, loadModel, markSaved, modelRevision } from './state/store.js';
 import { currentDiagram, removeSelectionFromDiagram, deleteSelectionFromModel } from './state/actions.js';
 import { sampleModel } from './model/sample.js';
-import { parse, serialize } from './io/json.js';
+import { serialize } from './io/json.js';
 import { createModel } from './model/model.js';
 import { hosted, post, initHost } from './host.js';
 import { initCanvas, initInlineEditor, drawCanvas, selectAll, nudge } from './ui/canvas.js';
@@ -118,11 +118,8 @@ function start() {
     return;
   }
   window.addEventListener('beforeunload', (e) => { if (store.ui.dirty) { e.preventDefault(); e.returnValue = ''; } });
-  let model = null;
-  const saved = readAutosave();
-  if (saved) { try { model = parse(JSON.stringify(saved)).model; } catch { model = null; } }
-  loadModel(model || sampleModel());
-  startSync();
+  // The record store holds the last open model; the sample is for a first launch.
+  startSync(sampleModel);
 }
 
 // On the Portal the page carries the Portal's bar: the app switcher, the account, Sign in when the session is gone.
@@ -132,9 +129,9 @@ function mountPortalBar() {
 }
 
 // After the first model is on screen: the record store, the engine and the timer.
-function startSync() {
+function startSync(fallback = null) {
   mountPortalBar();
-  initSync().catch((err) => console.error('sync could not start', err));
+  initSync({ fallback }).catch((err) => { console.error('sync could not start', err); if (fallback && Object.keys(store.model.elements).length <= 1) loadModel(fallback()); });
 }
 
 start();

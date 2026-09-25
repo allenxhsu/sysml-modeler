@@ -22,7 +22,10 @@ enum MainMenu {
                         ShellMenu.web("This Diagram as PNG…", "export.png"),
                         ShellMenu.web("This Diagram as PDF…", "export.pdf", "e", [.command, .shift]),
                         ShellMenu.web("All Diagrams as PDF…", "export.pdfAll"),
+                        .separator(),
+                        ShellMenu.web("Everything — Every Record on This Device…", "file.exportAll"),
                     ]),
+                    ShellMenu.web("Import Everything…", "file.importAll"),
                 ]),
                 ShellMenu.submenu("Edit", ShellMenu.editItems() + [
                     .separator(),
