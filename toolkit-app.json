@@ -4,7 +4,7 @@
   "mark": "SY",
   "colorToken": "sysml",
   "workspace": "sysml",
-  "static": { "dir": ".", "build": null, "include": ["index.html", "src/**", "ui-kit/**", "sync-kit/**"] },
+  "static": { "dir": ".", "build": null, "include": ["index.html", "src/**", "ui-kit/**", "sync-kit/js/**"] },
   "entry": "index.html",
   "offline": true,
   "csp": null,
