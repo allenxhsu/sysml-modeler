@@ -5,8 +5,8 @@ there and refresh this copy. Only the directories listed below are managed,
 and a refresh replaces them wholesale.
 
 - Package: ui-kit 0.2.0
-- Source commit: dcd095d + uncommitted changes
-- Copied: 2026-09-25T13:52:23.641Z
+- Source commit: fd5c61c
+- Copied: 2026-09-30T14:17:18.723Z
 - Contents: css/ adapters/ fonts/ js/ tokens/ swift/
 
 From `SysML/` (the folder that holds this copy):
