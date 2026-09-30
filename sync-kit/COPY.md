@@ -1,7 +1,7 @@
 # sync-kit, vendored
 
-A copy of `sync-kit` 0.1.0, source commit `1ef97b9`,
-taken 2026-09-25T13:52:23.559Z.
+A copy of `sync-kit` 0.1.0, source commit `dbc51ae`,
+taken 2026-09-30T14:17:29.439Z.
 
 Managed directories, overwritten wholesale on every refresh:
 
