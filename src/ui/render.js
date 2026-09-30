@@ -4,9 +4,12 @@
 import { escapeXml, textWidth } from '../util.js';
 import { REL_KINDS } from '../model/types.js';
 import { measureAll, frameRect, frameTitle, portLayout, routeAll, edgeLabel, headHeight, PAD, LINE, PORT } from '../model/layout.js';
+import { sequenceScene } from '../model/sequence.js';
+import { renderSequence } from './sequence.js';
 
 /** Everything the canvas needs to draw and hit-test one diagram. */
 export function computeScene(model, diagram) {
+  if (diagram.kind === 'sd') return sequenceScene(model, diagram);
   const boxes = measureAll(model, diagram);
   const frame = frameRect(diagram, boxes);
   const ports = portLayout(model, diagram, boxes, frame);
@@ -61,6 +64,11 @@ ${s}.d-head.filled{fill:${v.ink2}}
 ${s}.d-head.hollow{fill:${v.paper}}
 ${s}.d-hit{fill:none;stroke:transparent;stroke-width:12}
 ${s}.d-label-bg{fill:${v.paper};opacity:.85}
+${s}.d-lifeline{fill:none;stroke:${v.ink3};stroke-width:1;stroke-dasharray:6 4}
+${s}.d-exec{fill:${v.paper};stroke:${v.a};stroke-width:1}
+${s}.d-frag-box{fill:none;stroke:${v.ink2};stroke-width:1}
+${s}.d-frag-tab{fill:${v.tab};stroke:${v.ink2};stroke-width:1}
+${s}.d-frag-sep{fill:none;stroke:${v.ink2};stroke-width:1;stroke-dasharray:6 4}
 `;
 }
 
@@ -222,6 +230,7 @@ export function renderScene(model, scene, selection = {}) {
     `<path class="d-frame-tab" d="M${frame.x} ${frame.y}h${n(tabW)}v14l-10 10H${frame.x}z"/>`,
     `<text class="d-mono" x="${frame.x + 10}" y="${frame.y + 16}">${x(scene.title)}</text>`,
   ];
+  if (scene.kind === 'sd') { parts.push(renderSequence(model, scene, selection)); return parts.join(''); }
   const symbols = []; const front = [];
   const backdrop = (box) => box.content.shape === 'subject' || box.content.shape === 'package';
   for (const box of scene.boxes.values()) (selSyms.has(box.id) && !backdrop(box) ? front : symbols).push(symbolMarkup(model, box, selSyms.has(box.id), selSyms.size === 1));

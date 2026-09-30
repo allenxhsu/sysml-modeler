@@ -13,7 +13,8 @@
 
 import { escapeXml, parseXml, xattr, uid } from '../util.js';
 import { canOwn } from '../model/types.js';
-import { createModel, addDiagram, addSymbol, children, features } from '../model/model.js';
+import { createModel, addDiagram, addSymbol, children, features, lifelinesOf, messagesOf, fragmentsOf, renumberMessages } from '../model/model.js';
+import { MESSAGE_KINDS } from '../model/types.js';
 import { measure } from '../model/layout.js';
 import { parse as parseJson, serialize } from './json.js';
 
@@ -81,6 +82,7 @@ export function exportXmi(model, { includeDiagrams = true } = {}) {
       case 'actor': type = 'uml:Actor'; break;
       case 'useCase': type = 'uml:UseCase'; break;
       case 'comment': return `${pad}<ownedComment xmi:type="uml:Comment"${a({ 'xmi:id': e.id, body: e.body })}/>\n`;
+      case 'interaction': return interaction(e, pad, e.kind === 'package' ? tag : tag === 'nestedClassifier' ? 'ownedBehavior' : tag);
       default: return '';
     }
     for (const r of rels) {
@@ -99,6 +101,34 @@ export function exportXmi(model, { includeDiagrams = true } = {}) {
       inner += `${pad}  <ownedConnector xmi:type="uml:Connector"${a({ 'xmi:id': r.id, name: r.name })}>\n${end(r.sourceId, r.sourcePortId, 1)}${end(r.targetId, r.targetPortId, 2)}${pad}  </ownedConnector>\n`;
     }
     return `${pad}<${tag} xmi:type="${type}"${a({ 'xmi:id': e.id, name: e.name, isAbstract: e.isAbstract ? 'true' : undefined })}>\n${inner}${pad}</${tag}>\n`;
+  };
+
+  // A sequence diagram's interaction, the UML way: each message end is a
+  // MessageOccurrenceSpecification covering a lifeline. A combined fragment's
+  // span in time is not something UML's structure records without nesting the
+  // occurrences inside its operands, so "model only" loses it; the extension keeps it.
+  const interaction = (e, pad, tag) => {
+    const p2 = `${pad}  `;
+    let inner = doc(e, p2);
+    for (const l of lifelinesOf(model, e.id)) inner += `${p2}<lifeline xmi:type="uml:Lifeline"${a({ 'xmi:id': l.id, name: l.name, represents: l.representsId || undefined })}/>\n`;
+    for (const m of messagesOf(model, e.id)) {
+      inner += `${p2}<fragment xmi:type="uml:MessageOccurrenceSpecification"${a({ 'xmi:id': `${m.id}_s`, covered: m.fromId, message: m.id })}/>\n`
+        + `${p2}<fragment xmi:type="uml:MessageOccurrenceSpecification"${a({ 'xmi:id': `${m.id}_r`, covered: m.toId, message: m.id })}/>\n`;
+    }
+    for (const f of fragmentsOf(model, e.id)) {
+      inner += `${p2}<fragment xmi:type="uml:CombinedFragment"${a({ 'xmi:id': f.id, interactionOperator: f.operator, covered: (f.coveredIds || []).join(' ') || undefined })}>\n`;
+      (f.operands || []).forEach((op, i) => {
+        inner += `${p2}  <operand xmi:type="uml:InteractionOperand"${a({ 'xmi:id': `${f.id}_o${i}` })}>`
+          + (op.guard ? `<guard xmi:type="uml:InteractionConstraint"${a({ 'xmi:id': `${f.id}_g${i}` })}><specification xmi:type="uml:LiteralString"${a({ 'xmi:id': `${f.id}_v${i}`, value: op.guard })}/></guard>` : '')
+          + `</operand>\n`;
+      });
+      inner += `${p2}</fragment>\n`;
+    }
+    for (const m of messagesOf(model, e.id)) {
+      inner += `${p2}<message xmi:type="uml:Message"${a({ 'xmi:id': m.id, name: m.name, messageSort: MESSAGE_KINDS[m.msgKind]?.sort || 'synchCall', sendEvent: `${m.id}_s`, receiveEvent: `${m.id}_r` })}/>\n`;
+    }
+    for (const k of children(model, e.id)) if (k.kind === 'comment') inner += element(k, p2);
+    return `${pad}<${tag} xmi:type="uml:Interaction"${a({ 'xmi:id': e.id, name: e.name })}>\n${inner}${pad}</${tag}>\n`;
   };
 
   const root = model.elements[model.rootId];
@@ -251,6 +281,35 @@ export function importXmi(text, { ignoreExtension = false } = {}) {
     }
   };
 
+  const SORT_KIND = Object.fromEntries(Object.entries(MESSAGE_KINDS).map(([k, v]) => [v.sort, k]));
+  /** Lifelines, messages (through their occurrence specifications) and combined fragments. */
+  const readInteraction = (node, e) => {
+    const occurrence = new Map(); // occurrence id → lifeline xmi id
+    const lifelineIds = [];
+    for (const c of node.children) {
+      if (c.local === 'lifeline') { const l = put('lifeline', e.id, c); lifelineIds.push([l, c.attrs.represents]); }
+      else if (c.local === 'fragment' && xtype(c) === 'MessageOccurrenceSpecification') occurrence.set(xattr(c, 'id'), idrefs(c, 'covered')[0]);
+    }
+    later.push(() => { for (const [l, rep] of lifelineIds) { const id = idMap.get(rep); if (model.elements[id]) l.representsId = id; } });
+    let seq = 0;
+    for (const c of node.children) {
+      if (c.local === 'message') {
+        const m = put('message', e.id, c, { msgKind: SORT_KIND[c.attrs.messageSort] || 'sync', seq: ++seq });
+        later.push(() => {
+          m.fromId = idMap.get(occurrence.get(idrefs(c, 'sendEvent')[0])) || null;
+          m.toId = idMap.get(occurrence.get(idrefs(c, 'receiveEvent')[0])) || null;
+          if (!model.elements[m.fromId] || !model.elements[m.toId]) { delete model.elements[m.id]; skip('Message with an end this app could not resolve'); }
+        });
+      } else if (c.local === 'fragment' && xtype(c) === 'CombinedFragment') {
+        const operands = c.children.filter((x) => x.local === 'operand').map((op) => ({ guard: op.children.find((g) => g.local === 'guard')?.children.find((v) => v.local === 'specification')?.attrs.value || '' }));
+        const f = put('fragment', e.id, c, { operator: c.attrs.interactionOperator || 'alt', operands: operands.length ? operands : [{ guard: '' }], coveredIds: [], fromSeq: 1, toSeq: 1 });
+        const covered = idrefs(c, 'covered');
+        later.push(() => { f.coveredIds = covered.map((x) => idMap.get(x)).filter((x) => model.elements[x]); f.toSeq = Math.max(1, seq); });
+      } else if (c.local === 'fragment' && xtype(c) !== 'MessageOccurrenceSpecification') skip(`uml:${xtype(c)}`);
+    }
+    later.push(() => renumberMessages(model, e.id));
+  };
+
   const walk = (node, ownerId) => {
     for (const c of node.children) {
       if (c.local !== 'packagedElement' && c.local !== 'nestedClassifier' && c.local !== 'ownedBehavior') continue;
@@ -270,7 +329,8 @@ export function importXmi(text, { ignoreExtension = false } = {}) {
       } else if (t === 'DataType' || t === 'PrimitiveType' || t === 'Enumeration') {
         e = put('valueType', ownerId, c, { unit: stereoOf(xid, (n) => n === 'ValueType')?.attrs.unit || '' });
         readFeatures(c, e);
-      } else if (t === 'Actor') e = put('actor', ownerId, c);
+      } else if (t === 'Interaction') { e = put('interaction', ownerId, c); readComments(c, e, true); readInteraction(c, e); continue; }
+      else if (t === 'Actor') e = put('actor', ownerId, c);
       else if (t === 'UseCase') e = put('useCase', ownerId, c);
       else if (stereoOf(xid, (n) => n === 'TestCase')) e = put('testCase', ownerId, c);
       else if (t === 'Association') {
@@ -323,6 +383,10 @@ function starterDiagrams(model) {
     layoutInto(model, 'bdd', pkg, `${pkg.name} structure`, [...deep('block'), ...deep('valueType')]);
     layoutInto(model, 'req', pkg, `${pkg.name} requirements`, deep('requirement'));
     layoutInto(model, 'uc', pkg, `${pkg.name} use cases`, [...deep('actor'), ...deep('useCase')]);
+  }
+  for (const ia of Object.values(model.elements).filter((e) => e.kind === 'interaction')) {
+    const d = addDiagram(model, 'sd', ia.id, ia.name, { contextId: ia.id });
+    lifelinesOf(model, ia.id).forEach((l, i) => addSymbol(model, d, l.id, 60 + i * 170, 0));
   }
   for (const b of Object.values(model.elements).filter((e) => e.kind === 'block')) {
     const parts = features(model, b.id, 'property').filter((p) => p.propKind !== 'value');

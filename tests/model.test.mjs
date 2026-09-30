@@ -119,6 +119,10 @@ test('validation: each rule fires on a model built to break it', () => {
   addElement(m, 'property', a.id, { name: 'v', propKind: 'value' });
   addElement(m, 'property', a.id, { name: 'loose', propKind: 'part' });
   addElement(m, 'port', a.id, { name: 'p' });
+  const ia = addElement(m, 'interaction', m.rootId, { name: 'I' });
+  addElement(m, 'lifeline', ia.id, { name: 'ghost' });
+  addElement(m, 'message', ia.id, { name: 'lost', fromId: null, toId: null });
+  addElement(m, 'fragment', ia.id, { operator: 'opt', coveredIds: [] });
   addElement(m, 'block', m.rootId, { name: 'A' });
   addElement(m, 'block', m.rootId, { name: '' });
   addRelationship(m, 'generalization', a.id, b.id);

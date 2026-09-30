@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 4 910 536" width="910" height="536"><style>
+text{font-family:Helvetica, Arial, sans-serif;font-size:12px;fill:#111418;dominant-baseline:auto}
+.d-mono{font-family:Menlo, Consolas, monospace;font-size:11px;fill:#2d343c}
+.d-name{font-family:Helvetica, Arial, sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.04em}
+.d-italic{font-style:italic}
+.d-comp{font-size:10.5px;font-style:italic;fill:#5b6470}
+.d-frame{fill:none;stroke:#111418;stroke-width:1}
+.d-frame-tab{fill:#ffffff;stroke:#111418;stroke-width:1}
+.d-sym .d-shape{fill:#f4f8fd;stroke:#111418}
+.d-sym .d-rule,.d-sym .d-stick{stroke:#111418}
+.d-sym.c-b .d-shape{fill:#fdf8ee;stroke:#111418}
+.d-sym.c-b .d-rule,.d-sym.c-b .d-stick{stroke:#111418}
+.d-sym.c-c .d-shape{fill:#fbf3f6;stroke:#111418}
+.d-sym.c-c .d-rule,.d-sym.c-c .d-stick{stroke:#111418}
+.d-sym.c-n .d-shape{fill:#fffbe6;stroke:#5b6470}
+.d-sym.c-n .d-rule,.d-sym.c-n .d-stick{stroke:#5b6470}
+.d-shape{stroke-width:1.2}
+.d-shape.dashed{stroke-dasharray:6 4}
+.d-rule{stroke-width:.8;opacity:.55;fill:none}
+.d-stick{fill:none;stroke-width:1.5}
+.d-port{fill:#ffffff;stroke:#111418;stroke-width:1.2}
+.d-port-dir{fill:#111418;stroke:none}
+.d-line{fill:none;stroke:#2d343c;stroke-width:1.2}
+.d-line.dashed{stroke-dasharray:6 4}
+.d-head{fill:none;stroke:#2d343c;stroke-width:1.2}
+.d-head.filled{fill:#2d343c}
+.d-head.hollow{fill:#ffffff}
+.d-hit{fill:none;stroke:transparent;stroke-width:12}
+.d-label-bg{fill:#ffffff;opacity:.85}
+.d-lifeline{fill:none;stroke:#5b6470;stroke-width:1;stroke-dasharray:6 4}
+.d-exec{fill:#ffffff;stroke:#111418;stroke-width:1}
+.d-frag-box{fill:none;stroke:#2d343c;stroke-width:1}
+.d-frag-tab{fill:#ffffff;stroke:#2d343c;stroke-width:1}
+.d-frag-sep{fill:none;stroke:#2d343c;stroke-width:1;stroke-dasharray:6 4}
+</style><rect x="4" y="4" width="910" height="536" fill="#fff"/><rect class="d-frame" x="20" y="20" width="878" height="504"/><path class="d-frame-tab" d="M20 20h364.6v14l-10 10H20z"/><text class="d-mono" x="30" y="36">sd [interaction] Charge battery [Charging sequence]</text><g class="d-frag" data-frag="fr_muo6v67x0033ae"><rect class="d-frag-box" x="277" y="236" width="566.5" height="144"/><path class="d-frag-tab" d="M277 236h48.4v14l-8 8H277z"/><text class="d-mono" x="283" y="251">loop</text><text class="d-mono" x="333.4" y="251">[until full]</text></g><g class="d-frag" data-frag="fr_muo6v67x0034bz"><rect class="d-frag-box" x="63" y="362" width="334" height="60"/><path class="d-frag-tab" d="M63 362h41.8v14l-8 8H63z"/><text class="d-mono" x="69" y="377">opt</text><text class="d-mono" x="112.8" y="377">[driver present]</text></g><g class="d-sym" data-sym="sy_muo6v67x0036lx"><path class="d-lifeline" d="M123 110V484"/><g transform="translate(60 70)"><rect class="d-shape" width="126" height="40"/><text class="d-name" x="63" y="25" text-anchor="middle" text-decoration="underline">driver : Driver</text></g></g><g class="d-sym" data-sym="sy_muo6v67x0037v8"><path class="d-lifeline" d="M337 110V484"/><g transform="translate(270 70)"><rect class="d-shape" width="134" height="40"/><text class="d-name" x="67" y="25" text-anchor="middle" text-decoration="underline">vehicle : Vehicle</text></g></g><g class="d-sym" data-sym="sy_muo6v67x0038jh"><path class="d-lifeline" d="M582.5 110V484"/><g transform="translate(480 70)"><rect class="d-shape" width="205" height="40"/><text class="d-name" x="102.5" y="25" text-anchor="middle" text-decoration="underline">station : Charging station</text></g></g><g class="d-sym" data-sym="sy_muo6v67x0039wm"><path class="d-lifeline" d="M783.5 110V484"/><g transform="translate(709 70)"><rect class="d-shape" width="149" height="40"/><text class="d-name" x="74.5" y="25" text-anchor="middle" text-decoration="underline">battery : Battery</text></g></g><rect class="d-exec" x="332" y="140" width="10" height="25.2"/><rect class="d-exec" x="778.5" y="266" width="10" height="84"/><rect class="d-exec" x="778.5" y="308" width="10" height="25.2"/><g class="d-msg" data-msg="me_muo6v67w002w4b"><path class="d-hit" d="M123 140H332"/><path class="d-line" d="M123 140H332"/><path class="d-head filled" transform="translate(332 140) rotate(0)" d="M-12 -5L0 0L-12 5Z"/><text class="d-mono" x="227.5" y="134" text-anchor="middle">1: plugIn</text></g><g class="d-msg" data-msg="me_muo6v67x002xyh"><path class="d-hit" d="M337 182H582.5"/><path class="d-line" d="M337 182H582.5"/><path class="d-head" transform="translate(582.5 182) rotate(0)" d="M-11 -5L0 0L-11 5"/><text class="d-mono" x="459.8" y="176" text-anchor="middle">2: requestCharge(kW)</text></g><g class="d-msg" data-msg="me_muo6v67x002ykd"><path class="d-hit" d="M582.5 224H337"/><path class="d-line dashed" d="M582.5 224H337"/><path class="d-head" transform="translate(337 224) rotate(180)" d="M-11 -5L0 0L-11 5"/><text class="d-mono" x="459.8" y="218" text-anchor="middle">3: offer</text></g><g class="d-msg" data-msg="me_muo6v67x002zwc"><path class="d-hit" d="M337 266H778.5"/><path class="d-line" d="M337 266H778.5"/><path class="d-head filled" transform="translate(778.5 266) rotate(0)" d="M-12 -5L0 0L-12 5Z"/><text class="d-mono" x="557.8" y="260" text-anchor="middle">4: startCharging</text></g><g class="d-msg" data-msg="me_muo6v67x00305e"><path class="d-hit" d="M783.5 308H823.5V329H789.5"/><path class="d-line" d="M783.5 308H823.5V329H789.5"/><path class="d-head filled" transform="translate(789.5 329) rotate(180)" d="M-12 -5L0 0L-12 5Z"/><text class="d-mono" x="831.5" y="302" text-anchor="start">5: monitorCells</text></g><g class="d-msg" data-msg="me_muo6v67x0031qn"><path class="d-hit" d="M783.5 350H337"/><path class="d-line dashed" d="M783.5 350H337"/><path class="d-head" transform="translate(337 350) rotate(180)" d="M-11 -5L0 0L-11 5"/><text class="d-mono" x="560.3" y="344" text-anchor="middle">6: charged</text></g><g class="d-msg" data-msg="me_muo6v67x0032qr"><path class="d-hit" d="M337 392H123"/><path class="d-line" d="M337 392H123"/><path class="d-head" transform="translate(123 392) rotate(180)" d="M-11 -5L0 0L-11 5"/><text class="d-mono" x="230" y="386" text-anchor="middle">7: notify</text></g></svg>

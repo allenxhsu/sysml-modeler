@@ -5,8 +5,9 @@
 import { el, clear } from '../util.js';
 import { store, set, openDiagram, selectElement, tryCommit } from '../state/store.js';
 import { updateElement, updateRelationship, updateDiagram, renameDiagram, createElement, deleteElement, reparent, currentDiagram, deleteSelectionFromModel } from '../state/actions.js';
-import { ELEMENT_KINDS, REL_KINDS, DIAGRAM_KINDS, PROP_KINDS, PORT_DIRECTIONS, MATRIX_PRESETS, canOwn } from '../model/types.js';
-import { features, featureLabel, qualifiedName, relationsOf, usages, elementsOfKind, resolveEdge, getSymbol, isAncestor } from '../model/model.js';
+import { ELEMENT_KINDS, REL_KINDS, DIAGRAM_KINDS, PROP_KINDS, PORT_DIRECTIONS, MATRIX_PRESETS, MESSAGE_KINDS, FRAGMENT_OPERATORS, canOwn } from '../model/types.js';
+import { features, featureLabel, qualifiedName, relationsOf, usages, elementsOfKind, resolveEdge, getSymbol, isAncestor, lifelinesOf, messagesOf, fragmentsOf } from '../model/model.js';
+import { placeMessage } from '../state/actions.js';
 import { icon } from './tree.js';
 
 const field = (label, control) => el('label', { class: 'sc-field' }, el('span', { class: 'sc-label', text: label }), control);
@@ -82,11 +83,59 @@ function elementSpec(root, e) {
     case 'operation':
       root.append(field('Parameters', textInput('params', e.params, (v) => up({ params: v }), { placeholder: 'distance : km' })), field('Returns', textInput('returnType', e.returnType, (v) => up({ returnType: v.trim() }))));
       break;
+    case 'lifeline': {
+      const options = [{ value: '', label: '— nothing —' }];
+      for (const k of ['block', 'actor']) for (const t of elementsOfKind(model, k)) options.push({ value: t.id, label: `${t.name}  ‹${k}›` });
+      for (const b of elementsOfKind(model, 'block')) for (const pt of features(model, b.id, 'property', 'part')) options.push({ value: pt.id, label: `${b.name}.${pt.name}  ‹part›` });
+      const row = el('div', { class: 'type-row' }, select('representsId', options, e.representsId || '', (v) => up({ representsId: v || null })));
+      if (e.representsId) row.append(el('button', { class: 'sc-button sc-button--ghost sc-button--sm', text: 'Go to', onclick: () => selectElement(e.representsId, { reveal: true }) }));
+      root.append(field('Represents', row));
+      break;
+    }
+    case 'message': {
+      const lines = lifelinesOf(model, e.ownerId).map((l) => ({ value: l.id, label: featureLabel(model, l) }));
+      const count = messagesOf(model, e.ownerId).length;
+      root.append(
+        field('Kind', select('msgKind', Object.entries(MESSAGE_KINDS).map(([value, k]) => ({ value, label: k.label })), e.msgKind, (v) => up({ msgKind: v }))),
+        field('From', select('fromId', lines, e.fromId, (v) => up({ fromId: v }))),
+        field('To', select('toId', lines, e.toId, (v) => up({ toId: v }))),
+        field('Position in time', el('div', { class: 'adders' },
+          el('span', { class: 'sc-mono', text: `${e.seq} of ${count}` }),
+          addButton('↑ Earlier', () => placeMessage(e.id, e.seq - 1)), addButton('↓ Later', () => placeMessage(e.id, e.seq + 1)))));
+      break;
+    }
+    case 'fragment': {
+      const count = Math.max(1, messagesOf(model, e.ownerId).length);
+      const guards = (e.operands || []).map((o) => o.guard || '').join('\n');
+      root.append(
+        field('Operator', select('operator', FRAGMENT_OPERATORS.map((o) => ({ value: o, label: o })), e.operator, (v) => up({ operator: v }))),
+        field('Operand guards, one per line', textArea('guards', guards, (v) => up({ operands: v.split('\n').map((g, i) => ({ ...(e.operands?.[i] || {}), guard: g.trim() })) }), 3)),
+        field('From message', textInput('fromSeq', String(e.fromSeq), (v) => up({ fromSeq: Math.max(1, Math.min(count, +v || 1)) }), { type: 'number', min: 1, max: count })),
+        field('To message', textInput('toSeq', String(e.toSeq), (v) => up({ toSeq: Math.max(1, Math.min(count, +v || 1)) }), { type: 'number', min: 1, max: count })));
+      const ops = e.operands || [];
+      if (ops.length > 1) root.append(field('Later operands start at message', el('div', { class: 'adders' }, ...ops.slice(1).map((o, i) => textInput(`op${i + 1}`, String(o.fromSeq || e.fromSeq), (v) => { const next = ops.map((x) => ({ ...x })); next[i + 1].fromSeq = Math.max(1, Math.min(count, +v || 1)); up({ operands: next }); }, { type: 'number', min: 1, max: count, style: { width: '64px' } })))));
+      root.append(section('Covers'));
+      for (const l of lifelinesOf(model, e.ownerId)) {
+        const on = (e.coveredIds || []).includes(l.id);
+        root.append(check(`cov-${l.id}`, featureLabel(model, l), on, (v) => up({ coveredIds: v ? [...(e.coveredIds || []), l.id] : (e.coveredIds || []).filter((x) => x !== l.id) })));
+      }
+      break;
+    }
     default:
   }
   root.append(field('Documentation', textArea('doc', e.doc, (v) => up({ doc: v }))));
 
   if (e.kind === 'block' || e.kind === 'valueType') featureLists(root, e);
+  if (e.kind === 'interaction') {
+    root.append(section('Lifelines'));
+    featureRows(root, lifelinesOf(model, e.id));
+    root.append(el('div', { class: 'adders' }, addButton('+ Lifeline', () => createElement('lifeline', e.id, { name: 'lifeline' }))));
+    root.append(section('Messages, in time order'));
+    featureRows(root, messagesOf(model, e.id));
+    root.append(section('Fragments'));
+    featureRows(root, fragmentsOf(model, e.id));
+    root.append(el('p', { class: 'empty', text: 'Messages and fragments are made on a sequence diagram of this interaction.' }));
+  }
   if (e.kind === 'requirement') {
     root.append(section('Nested requirements'));
     featureRows(root, features(model, e.id, 'requirement'));

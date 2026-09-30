@@ -67,6 +67,9 @@ export function typeLabel(model, e) {
 
 /** "name : Type [mult] = default" as it reads in a compartment. */
 export function featureLabel(model, e) {
+  if (e.kind === 'lifeline') { const r = model.elements[e.representsId]; return r ? `${e.name || ''} : ${r.name}` : (e.name || 'lifeline'); }
+  if (e.kind === 'message') { const n = (id) => model.elements[id]?.name || '?'; return `${e.seq}: ${n(e.fromId)} → ${n(e.toId)}${e.name ? ` ${e.name}` : ''}`; }
+  if (e.kind === 'fragment') return `${e.operator}${e.operands?.[0]?.guard ? ` [${e.operands[0].guard}]` : ''}`;
   if (e.kind === 'operation') return `${e.name || ''}(${e.params || ''})${e.returnType ? ` : ${e.returnType}` : ''}`;
   const type = typeLabel(model, e);
   let s = e.name || '';
@@ -152,6 +155,9 @@ const DEFAULTS = {
   requirement: () => ({ reqId: '', text: '' }),
   comment: () => ({ body: '' }),
   property: () => ({ propKind: 'value', typeId: null, typeText: '', multiplicity: '1', defaultValue: '' }),
+  lifeline: () => ({ representsId: null }),
+  message: () => ({ msgKind: 'sync', fromId: null, toId: null, seq: 0 }),
+  fragment: () => ({ operator: 'alt', operands: [{ guard: '' }, { guard: 'else' }], coveredIds: [], fromSeq: 1, toSeq: 1 }),
   port: () => ({ typeId: null, typeText: '', direction: 'inout', multiplicity: '1' }),
   operation: () => ({ params: '', returnType: '' }),
 };
@@ -163,6 +169,7 @@ export function addElement(model, kind, ownerId, props = {}) {
   if (!canOwn(owner.kind, kind)) throw new Error(`A ${ELEMENT_KINDS[owner.kind].label.toLowerCase()} cannot own a ${ELEMENT_KINDS[kind].label.toLowerCase()}.`);
   const e = { id: uid(kind.slice(0, 2)), kind, name: '', ownerId, doc: '', ...(DEFAULTS[kind]?.() || {}), ...props };
   if (kind === 'requirement' && !e.reqId) e.reqId = nextReqId(model, ownerId);
+  if (kind === 'message' && !e.seq) e.seq = messagesOf(model, ownerId).length + 1;
   model.elements[e.id] = e;
   return e;
 }
@@ -191,8 +198,17 @@ export function removeElement(model, id) {
   for (const r of Object.values(model.relationships)) {
     if ([r.sourceId, r.targetId, r.sourcePortId, r.targetPortId, r.ownerId].some((x) => x && doomed.has(x))) delete model.relationships[r.id];
   }
+  // A message needs both its lifelines; a fragment just stops covering a lost one.
+  for (const e of Object.values(model.elements)) {
+    if (e.kind === 'message' && (doomed.has(e.fromId) || doomed.has(e.toId))) doomed.add(e.id);
+    if (e.kind === 'fragment' && e.coveredIds?.some((c) => doomed.has(c))) e.coveredIds = e.coveredIds.filter((c) => !doomed.has(c));
+  }
   for (const eid of doomed) delete model.elements[eid];
-  for (const e of Object.values(model.elements)) if (e.typeId && doomed.has(e.typeId)) e.typeId = null;
+  for (const e of Object.values(model.elements)) {
+    if (e.typeId && doomed.has(e.typeId)) e.typeId = null;
+    if (e.representsId && doomed.has(e.representsId)) e.representsId = null;
+  }
+  for (const ia of Object.values(model.elements)) if (ia.kind === 'interaction') renumberMessages(model, ia.id);
   for (const d of Object.values(model.diagrams)) pruneDiagram(model, d);
 }
 
@@ -241,7 +257,48 @@ export function canShow(model, diagram, element) {
   if (diagram.kind === 'ibd') {
     return element.kind === 'comment' || (element.kind === 'property' && element.propKind !== 'value' && element.ownerId === diagram.contextId);
   }
+  if (diagram.kind === 'sd') return element.kind === 'comment' || (element.kind === 'lifeline' && element.ownerId === diagram.contextId);
   return !isFeature(element) && element.id !== model.rootId;
+}
+
+// ---------------------------------------------------------------- interactions
+
+/** An interaction's messages in time order. */
+export function messagesOf(model, interactionId) {
+  return children(model, interactionId).filter((e) => e.kind === 'message').sort((a, b) => a.seq - b.seq);
+}
+export const lifelinesOf = (model, interactionId) => children(model, interactionId).filter((e) => e.kind === 'lifeline');
+export const fragmentsOf = (model, interactionId) => children(model, interactionId).filter((e) => e.kind === 'fragment');
+
+/** Make `seq` 1…n again, keeping the order. Fragments follow the messages they span. */
+export function renumberMessages(model, interactionId) {
+  const list = messagesOf(model, interactionId);
+  const map = new Map(list.map((m, i) => [m.seq, i + 1]));
+  list.forEach((m, i) => { m.seq = i + 1; });
+  for (const f of fragmentsOf(model, interactionId)) {
+    const clamp = (v) => Math.max(1, Math.min(list.length || 1, map.get(v) ?? v));
+    f.fromSeq = clamp(f.fromSeq); f.toSeq = Math.max(clamp(f.toSeq), f.fromSeq);
+    for (const op of f.operands || []) if (op.fromSeq) op.fromSeq = clamp(op.fromSeq);
+  }
+}
+
+/** Put message `id` at 1-based position `index` among its siblings. */
+export function moveMessageTo(model, id, index) {
+  const msg = model.elements[id];
+  if (msg?.kind !== 'message') return false;
+  const before = messagesOf(model, msg.ownerId);
+  const list = before.filter((m) => m.id !== id);
+  const at = Math.max(0, Math.min(list.length, index - 1));
+  list.splice(at, 0, msg);
+  // A fragment spans messages, not row numbers: it follows the ones it covered.
+  const map = new Map(before.map((m) => [m.seq, list.indexOf(m) + 1]));
+  list.forEach((m, i) => { m.seq = i + 1; });
+  for (const f of fragmentsOf(model, msg.ownerId)) {
+    const lo = map.get(f.fromSeq) ?? f.fromSeq; const hi = map.get(f.toSeq) ?? f.toSeq;
+    f.fromSeq = Math.min(lo, hi); f.toSeq = Math.max(lo, hi);
+    for (const op of f.operands || []) if (op.fromSeq) op.fromSeq = map.get(op.fromSeq) ?? op.fromSeq;
+  }
+  return true;
 }
 
 export function addSymbol(model, diagram, elementId, x, y) {
@@ -311,6 +368,7 @@ export function usages(model, elementId) {
     symbolOf(d, elementId)
     || (isFeature(e) && symbolOf(d, e.ownerId))
     || (e.kind === 'port' && d.symbols.some((s) => model.elements[s.elementId]?.typeId === e.ownerId))
+    || ((e.kind === 'message' || e.kind === 'fragment') && d.contextId === e.ownerId)
     || d.contextId === elementId
   ));
 }

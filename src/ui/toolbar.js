@@ -3,7 +3,7 @@
 import { el, clear, downloadText, slugify } from '../util.js';
 import { store, set, undo, redo, canUndo, canRedo, loadModel, markSaved, openDiagram, closeTab, selectElement } from '../state/store.js';
 import { createDiagram, currentDiagram, removeSelectionFromDiagram, deleteSelectionFromModel, hint } from '../state/actions.js';
-import { DIAGRAM_KINDS, ELEMENT_KINDS, REL_KINDS, NODE_TOOL_LABELS, MATRIX_PRESETS } from '../model/types.js';
+import { DIAGRAM_KINDS, ELEMENT_KINDS, REL_KINDS, NODE_TOOL_LABELS, MATRIX_PRESETS, pathToolLabel } from '../model/types.js';
 import { createModel, qualifiedName } from '../model/model.js';
 import { sampleModel } from '../model/sample.js';
 import { serialize, parse, FILE_EXT } from '../io/json.js';
@@ -121,6 +121,9 @@ function help() {
     'DRAWING',
     'Pick a node tool, then click the canvas. Pick a path tool, then click source and target.',
     'Composition and Reference create the part / reference property they stand for.',
+    'On a sequence diagram: drop a block or actor from the tree to add a lifeline, pick a message',
+    'tool and click two lifelines (the same one twice for a self-message), drag a message up or',
+    'down to move it in time, and place a Fragment on a row (alt / opt / loop; guards in the panel).',
     'Double-click a symbol to rename it. Drag corners to resize. Drag a port along its border.',
     '',
     'MOVING AROUND',
@@ -145,7 +148,7 @@ export const COMMANDS = {
   'edit.undo': undo, 'edit.redo': redo, 'edit.selectAll': selectAll,
   'edit.remove': removeSelectionFromDiagram, 'edit.delete': deleteSelectionFromModel,
   'view.zoomIn': () => zoomBy(1.25), 'view.zoomOut': () => zoomBy(0.8), 'view.zoomFit': zoomFit, 'view.appearance': appearance,
-  'diagram.bdd': newDiagram('bdd'), 'diagram.ibd': newDiagram('ibd'), 'diagram.req': newDiagram('req'), 'diagram.uc': newDiagram('uc'), 'diagram.pkg': newDiagram('pkg'),
+  'diagram.bdd': newDiagram('bdd'), 'diagram.ibd': newDiagram('ibd'), 'diagram.req': newDiagram('req'), 'diagram.uc': newDiagram('uc'), 'diagram.pkg': newDiagram('pkg'), 'diagram.sd': newDiagram('sd'),
   'diagram.reqtable': newDiagram('reqtable'), 'diagram.matrix': newMatrix,
   'export.svg': () => withDiagram((d) => exportSvg(store.model, d)),
   'export.png': () => withDiagram((d) => exportPng(store.model, d)),
@@ -257,7 +260,7 @@ export function renderPalette(root) {
   });
   root.append(el('div', { class: 'sc-label', text: 'Tools' }), tool('select', '↖ Select', 'Select and move (Esc)'),
     el('div', { class: 'sc-label', text: 'Nodes' }), ...meta.nodes.map((k) => tool(`node:${k}`, NODE_TOOL_LABELS[k] || ELEMENT_KINDS[k].label)),
-    el('div', { class: 'sc-label', text: 'Paths' }), ...meta.paths.map((k) => tool(`path:${k}`, REL_KINDS[k].label)));
+    el('div', { class: 'sc-label', text: d.kind === 'sd' ? 'Messages' : 'Paths' }), ...meta.paths.map((k) => tool(`path:${k}`, pathToolLabel(k))));
 }
 
 export function renderStatus(root) {
@@ -265,7 +268,7 @@ export function renderStatus(root) {
   const { ui } = store;
   const d = currentDiagram();
   const [type, kind] = ui.tool.split(':');
-  const toolName = type === 'select' ? 'select' : (NODE_TOOL_LABELS[kind] || ELEMENT_KINDS[kind]?.label || REL_KINDS[kind]?.label || kind);
+  const toolName = type === 'select' ? 'select' : (NODE_TOOL_LABELS[kind] || ELEMENT_KINDS[kind]?.label || pathToolLabel(kind));
   root.append(el('span', { class: 'status-tool', text: toolName }), el('span', { class: 'status-hint', text: ui.hint || '' }), el('span', { class: 'sc-spacer' }));
   if (d?.symbols) root.append(el('span', { text: `${d.symbols.length} symbols · ${d.paths.length} paths` }), el('span', { text: `zoom ${Math.round((ui.views[d.id]?.scale || 1) * 100)}%` }));
   root.append(el('span', { class: ui.dirty ? 'warn' : 'ok', text: ui.dirty ? '● unsaved' : '● saved' }));

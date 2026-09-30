@@ -2,10 +2,11 @@
 // menus all go through these, so an edit behaves the same wherever it starts.
 
 import { store, tryCommit, set, openDiagram, selectElement, emit } from './store.js';
-import { ELEMENT_KINDS, REL_KINDS, DIAGRAM_KINDS, endsAllowed, canOwn, canOwnDiagram } from '../model/types.js';
+import { ELEMENT_KINDS, REL_KINDS, DIAGRAM_KINDS, MESSAGE_KINDS, MESSAGE_TOOLS, endsAllowed, canOwn, canOwnDiagram } from '../model/types.js';
 import {
   addElement, addRelationship, addDiagram, addSymbol, addPath, removeElement, removeEdge, removeSymbol, removePath, removeDiagram,
   moveElement, owningPackage, uniqueName, findRelationship, canShow, symbolOf, features, resolveEdge,
+  lifelinesOf, messagesOf, moveMessageTo, renumberMessages,
 } from '../model/model.js';
 
 const lowerFirst = (s) => (s ? s[0].toLowerCase() + s.slice(1).replace(/\s+/g, '') : s);
@@ -64,11 +65,21 @@ export function createDiagram(kind, nearId, props = {}) {
       if (ctx?.kind !== 'block') throw new Error('An internal block diagram needs a block as its context. Select a block first.');
       owner = ctx;
       props = { ...props, contextId: ctx.id };
+    } else if (kind === 'sd') {
+      // The interaction the diagram shows: the selected one, the one the selection sits in, or a new one.
+      let ctx = m.elements[props.contextId || nearId];
+      while (ctx && ctx.kind !== 'interaction') ctx = m.elements[ctx.ownerId];
+      if (!ctx) {
+        const pkg = owningPackage(m, nearId || m.rootId);
+        ctx = addElement(m, 'interaction', pkg.id, { name: uniqueName(m, pkg.id, 'Interaction') });
+      }
+      owner = ctx;
+      props = { ...props, contextId: ctx.id };
     } else {
       while (owner && !(canOwnDiagram(owner.kind) && owner.kind === 'package')) owner = m.elements[owner.ownerId];
       owner = owner || m.elements[m.rootId];
     }
-    const base = props.name || (kind === 'ibd' ? `${owner.name} internals` : DIAGRAM_KINDS[kind].label);
+    const base = props.name || (kind === 'ibd' ? `${owner.name} internals` : kind === 'sd' ? owner.name : DIAGRAM_KINDS[kind].label);
     const taken = new Set(Object.values(m.diagrams).map((x) => x.name));
     let name = base;
     for (let i = 2; taken.has(name); i++) name = `${base} ${i}`;
@@ -78,6 +89,7 @@ export function createDiagram(kind, nearId, props = {}) {
       features(m, owner.id, 'property').filter((p) => p.propKind !== 'value')
         .forEach((p, i) => addSymbol(m, diagram, p.id, 120 + (i % 3) * 260, 140 + Math.floor(i / 3) * 170));
     }
+    if (kind === 'sd') lifelinesOf(m, owner.id).forEach((l, i) => addSymbol(m, diagram, l.id, 60 + i * 170, 0));
     return diagram;
   });
   if (d) { delete store.ui.collapsed[d.ownerId]; openDiagram(d.id); }
@@ -107,6 +119,16 @@ export function createOnDiagram(kind, x, y, props = {}) {
         propKind: kind === 'part' ? 'part' : 'reference', typeId: type?.id || null,
         name: uniqueName(m, ctx.id, type ? lowerFirst(type.name) : 'part'),
       });
+    } else if (kind === 'lifeline') {
+      const rep = m.elements[props.representsId];
+      e = addElement(m, 'lifeline', diagram.contextId, { representsId: rep?.id || null, name: uniqueName(m, diagram.contextId, rep ? lowerFirst(rep.name) : 'lifeline') });
+    } else if (kind === 'fragment') {
+      // Covers every lifeline drawn, over the message row it was dropped on; the specification panel narrows it.
+      const covered = diagram.symbols.map((s) => m.elements[s.elementId]).filter((x) => x?.kind === 'lifeline').map((x) => x.id);
+      const seq = Math.max(1, Math.min(messagesOf(m, diagram.contextId).length || 1, props.seq || 1));
+      e = addElement(m, 'fragment', diagram.contextId, { operator: props.operator || 'alt', coveredIds: covered, fromSeq: seq, toSeq: seq, operands: [{ guard: '' }, { guard: 'else' }] });
+      store.ui.selection = { elementId: e.id, fragId: e.id };
+      return { e, s: null };
     } else {
       const owner = ownerFor(m, kind, diagram.ownerId);
       e = addElement(m, kind, owner.id, { name: kind === 'comment' ? '' : uniqueName(m, owner.id, ELEMENT_KINDS[kind].label), ...props });
@@ -114,7 +136,7 @@ export function createOnDiagram(kind, x, y, props = {}) {
     const s = addSymbol(m, diagram, e.id, x, y);
     return { e, s };
   });
-  if (made) store.ui.selection = { elementId: made.e.id, symbolIds: [made.s.id] };
+  if (made?.s) store.ui.selection = { elementId: made.e.id, symbolIds: [made.s.id] };
   set({ tool: 'select', ...(made ? { hint: '' } : {}) });
   return made;
 }
@@ -132,6 +154,11 @@ export function dropOnDiagram(elementId, x, y) {
   const d = currentDiagram();
   const e = store.model.elements[elementId];
   if (!d?.symbols || !e) return;
+  // A block, part or actor dropped on a sequence diagram becomes a lifeline for it.
+  if (d.kind === 'sd' && ['block', 'actor', 'property'].includes(e.kind) && !(e.kind === 'property' && e.propKind === 'value')) {
+    createOnDiagram('lifeline', x, y, { representsId: e.id });
+    return;
+  }
   if (!canShow(store.model, d, e)) {
     hint(d.kind === 'ibd'
       ? 'Only parts and references of the context block can be shown on this internal block diagram.'
@@ -149,6 +176,7 @@ export function dropOnDiagram(elementId, x, y) {
  */
 export function connect(kind, from, to) {
   const d = currentDiagram();
+  if (MESSAGE_TOOLS[kind]) return sendMessage(MESSAGE_TOOLS[kind], from, to);
   const k = REL_KINDS[kind];
   const made = tryCommit(`Add ${k.label.toLowerCase()}`, (m) => {
     const diagram = m.diagrams[d.id];
@@ -181,11 +209,31 @@ export function connect(kind, from, to) {
   return made;
 }
 
+/** A message between two lifelines of the open sequence diagram; it takes the next position in time. */
+export function sendMessage(msgKind, from, to) {
+  const d = currentDiagram();
+  const made = tryCommit(`Add ${MESSAGE_KINDS[msgKind].label.toLowerCase()} message`, (m) => {
+    const a = m.elements[from.elementId]; const b = m.elements[to.elementId];
+    if (a?.kind !== 'lifeline' || b?.kind !== 'lifeline') throw new Error('A message runs from one lifeline to another.');
+    if (msgKind === 'create' && a.id === b.id) throw new Error('A lifeline cannot create itself.');
+    return addElement(m, 'message', d.contextId, { msgKind, fromId: a.id, toId: b.id, name: msgKind === 'reply' ? '' : uniqueName(m, d.contextId, msgKind === 'create' ? 'new' : msgKind === 'destroy' ? 'destroy' : 'message') });
+  });
+  if (made) store.ui.selection = { elementId: made.id, msgId: made.id };
+  set({ pending: null });
+  return made;
+}
+
+/** Put a message at a 1-based position in its interaction. */
+export function placeMessage(id, index) {
+  tryCommit('Reorder messages', (m) => { if (!moveMessageTo(m, id, index)) throw new Error('Not a message.'); renumberMessages(m, m.elements[id].ownerId); });
+}
+
 /** Delete key: take the selection off the diagram, leaving the model alone. */
 export function removeSelectionFromDiagram() {
   const d = currentDiagram();
   const sel = store.ui.selection;
   if (!d?.symbols || !sel) return;
+  if (sel.msgId || sel.fragId) { deleteSelectionFromModel(); return; }  // they exist only in the interaction
   if (sel.pathId) {
     const edge = resolveEdge(store.model, sel.refId);
     if (edge?.kind === 'connector') { deleteSelectionFromModel(); return; }

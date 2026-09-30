@@ -47,6 +47,7 @@ enum MainMenu {
                     ShellMenu.web("New Requirement Diagram", "diagram.req"),
                     ShellMenu.web("New Use Case Diagram", "diagram.uc"),
                     ShellMenu.web("New Package Diagram", "diagram.pkg"),
+                    ShellMenu.web("New Sequence Diagram", "diagram.sd"),
                     .separator(),
                     ShellMenu.web("New Requirement Table", "diagram.reqtable"),
                     ShellMenu.web("New Dependency Matrix…", "diagram.matrix"),

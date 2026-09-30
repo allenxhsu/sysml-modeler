@@ -28,6 +28,9 @@ export const RULES = {
   'actor-unused':          ['info',    'An actor takes part in no use case'],
   'block-unused':          ['info',    'A block appears on no diagram and is used by no other element'],
   'diagram-empty':         ['info',    'A diagram shows nothing'],
+  'lifeline-unrepresented':['warning', 'A lifeline represents no block, part or actor'],
+  'msg-ends':              ['error',   'A message lacks a lifeline at one end'],
+  'fragment-uncovered':    ['info',    'A combined fragment covers no lifeline'],
 };
 
 export function validate(model) {
@@ -39,12 +42,12 @@ export function validate(model) {
 
   // names
   for (const e of els) {
-    if (e.kind === 'comment') continue;
+    if (e.kind === 'comment' || e.kind === 'fragment' || e.kind === 'message') continue;
     if (!(e.name || '').trim()) add('name-empty', `${ELEMENT_KINDS[e.kind].label} in “${model.elements[e.ownerId]?.name || model.name}” has no name`, { elementId: e.id });
   }
   const seen = new Map();
   for (const e of els) {
-    if (!e.name || e.kind === 'comment') continue;
+    if (!e.name || e.kind === 'comment' || e.kind === 'message') continue;
     const key = `${e.ownerId}|${e.kind}|${e.name}`;
     if (seen.has(key)) add('name-dup', `${label(e)} appears twice in “${model.elements[e.ownerId]?.name || ''}”`, { elementId: e.id });
     seen.set(key, e);
@@ -112,11 +115,16 @@ export function validate(model) {
       if (!rels.some((r) => r.sourceId === e.id || r.targetId === e.id)) add('actor-unused', `Actor “${e.name}” takes part in no use case`, { elementId: e.id });
     } else if (e.kind === 'block') {
       const drawn = Object.values(model.diagrams).some((d) => d.symbols && (symbolOf(d, e.id) || d.contextId === e.id));
-      const used = els.some((x) => x.typeId === e.id) || rels.some((r) => r.sourceId === e.id || r.targetId === e.id);
+      const used = els.some((x) => x.typeId === e.id || x.representsId === e.id) || rels.some((r) => r.sourceId === e.id || r.targetId === e.id);
       if (!drawn && !used) add('block-unused', `Block “${e.name}” appears on no diagram and nothing refers to it`, { elementId: e.id });
     }
   }
 
+  for (const e of els) {
+    if (e.kind === 'lifeline' && !model.elements[e.representsId]) add('lifeline-unrepresented', `Lifeline “${e.name}” in “${model.elements[e.ownerId]?.name}” represents nothing`, { elementId: e.id });
+    if (e.kind === 'message' && (!model.elements[e.fromId] || !model.elements[e.toId])) add('msg-ends', `Message ${e.seq} “${e.name}” in “${model.elements[e.ownerId]?.name}” lacks a lifeline at one end`, { elementId: e.id });
+    if (e.kind === 'fragment' && !(e.coveredIds || []).some((id) => model.elements[id])) add('fragment-uncovered', `${e.operator} fragment in “${model.elements[e.ownerId]?.name}” covers no lifeline`, { elementId: e.id });
+  }
   for (const d of Object.values(model.diagrams)) {
     if (d.symbols && !d.symbols.length) add('diagram-empty', `Diagram “${d.name}” shows nothing`, { diagramId: d.id });
   }

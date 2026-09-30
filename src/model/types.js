@@ -18,21 +18,39 @@ export const ELEMENT_KINDS = {
   property:    { label: 'Property',    stereotype: null,          icon: 'pr', feature: true },
   port:        { label: 'Port',        stereotype: null,          icon: 'po', feature: true },
   operation:   { label: 'Operation',   stereotype: null,          icon: 'op', feature: true },
+  // behaviour: an interaction owns what a sequence diagram shows
+  interaction: { label: 'Interaction', stereotype: null,          icon: 'ia' },
+  lifeline:    { label: 'Lifeline',    stereotype: null,          icon: 'll', feature: true },
+  message:     { label: 'Message',     stereotype: null,          icon: 'ms', feature: true },
+  fragment:    { label: 'Fragment',    stereotype: null,          icon: 'fg', feature: true },
 };
+
+/** How a message is drawn: solid or dashed line, filled or open head. */
+export const MESSAGE_KINDS = {
+  sync:    { label: 'Call (sync)',  tool: 'msgSync',    line: 'solid',  head: 'filled', sort: 'synchCall' },
+  async:   { label: 'Signal (async)', tool: 'msgAsync', line: 'solid',  head: 'open',   sort: 'asynchSignal' },
+  reply:   { label: 'Reply',        tool: 'msgReply',   line: 'dashed', head: 'open',   sort: 'reply' },
+  create:  { label: 'Create',       tool: 'msgCreate',  line: 'dashed', head: 'open',   sort: 'createMessage' },
+  destroy: { label: 'Destroy',      tool: 'msgDestroy', line: 'solid',  head: 'filled', sort: 'deleteMessage' },
+};
+/** Path-tool id → message kind. */
+export const MESSAGE_TOOLS = Object.fromEntries(Object.entries(MESSAGE_KINDS).map(([k, v]) => [v.tool, k]));
+export const FRAGMENT_OPERATORS = ['alt', 'opt', 'loop', 'par', 'break', 'critical', 'ref'];
 
 export const PROP_KINDS = { value: 'Value', part: 'Part', reference: 'Reference' };
 export const PORT_DIRECTIONS = ['inout', 'in', 'out'];
 
-const PACKAGEABLE = ['package', 'block', 'valueType', 'requirement', 'testCase', 'actor', 'useCase', 'comment'];
+const PACKAGEABLE = ['package', 'block', 'valueType', 'requirement', 'testCase', 'actor', 'useCase', 'comment', 'interaction'];
 const OWNS = {
   package: PACKAGEABLE,
-  block: ['property', 'port', 'operation'],
+  block: ['property', 'port', 'operation', 'interaction'],
+  interaction: ['lifeline', 'message', 'fragment', 'comment'],
   valueType: ['property'],
   requirement: ['requirement'],
 };
 export const canOwn = (ownerKind, childKind) => (OWNS[ownerKind] || []).includes(childKind);
 /** Things that can own a diagram in the containment tree. */
-export const canOwnDiagram = (kind) => kind === 'package' || kind === 'block';
+export const canOwnDiagram = (kind) => kind === 'package' || kind === 'block' || kind === 'interaction';
 
 const CLASSIFIERS = ['block', 'valueType', 'actor', 'useCase', 'requirement', 'testCase'];
 const ANY = [...PACKAGEABLE];
@@ -85,13 +103,18 @@ export const DIAGRAM_KINDS = {
   pkg: { label: 'Package diagram', abbr: 'pkg',
     nodes: ['package', 'block', 'comment'],
     paths: ['containment', 'dependency'] },
+  sd: { label: 'Sequence diagram', abbr: 'sd', needsContext: true,
+    nodes: ['lifeline', 'fragment', 'comment'],
+    paths: ['msgSync', 'msgAsync', 'msgReply', 'msgCreate', 'msgDestroy'] },
   // generated views — no canvas
   reqtable: { label: 'Requirement table', abbr: 'table', view: true },
   matrix:   { label: 'Dependency matrix', abbr: 'matrix', view: true },
 };
 
 /** Palette labels for node tools that are not plain element kinds. */
-export const NODE_TOOL_LABELS = { part: 'Part', refpart: 'Reference', port: 'Port' };
+export const NODE_TOOL_LABELS = { part: 'Part', refpart: 'Reference', port: 'Port', lifeline: 'Lifeline', fragment: 'Fragment' };
+/** The label a palette shows for a path tool: a relationship kind or a message tool. */
+export const pathToolLabel = (tool) => REL_KINDS[tool]?.label || MESSAGE_KINDS[MESSAGE_TOOLS[tool]]?.label || tool;
 
 /** Relationship kinds a matrix can be built on, with its usual row → column kinds. */
 export const MATRIX_PRESETS = {

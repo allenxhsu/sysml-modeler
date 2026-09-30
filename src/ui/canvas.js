@@ -9,8 +9,10 @@ import {
 } from '../state/actions.js';
 import { computeScene, renderScene } from './render.js';
 import { projectToBorder } from '../model/layout.js';
-import { elementsOfKind, getSymbol, resolveEdge, addElement, owningPackage } from '../model/model.js';
-import { REL_KINDS } from '../model/types.js';
+import { elementsOfKind, getSymbol, resolveEdge, addElement, owningPackage, moveMessageTo } from '../model/model.js';
+import { pathToolLabel, MESSAGE_TOOLS } from '../model/types.js';
+import { seqAtY } from '../model/sequence.js';
+import { placeMessage } from '../state/actions.js';
 import { pickOrCreate, showMenu, modalOpen } from './dialog.js';
 
 export const DRAG_MIME = 'application/x-sysml-element';
@@ -128,10 +130,14 @@ function hit(e) {
   const port = t.closest?.('[data-port]');
   const sym = t.closest?.('[data-sym]');
   const path = t.closest?.('[data-path]');
+  const msg = t.closest?.('[data-msg]');
+  const frag = t.closest?.('[data-frag]');
+  if (msg) return { type: 'msg', msgId: msg.dataset.msg };
   if (handle && sym) return { type: 'handle', handle: handle.dataset.handle, symbolId: sym.dataset.sym };
   if (port) { const [partId, portId] = port.dataset.port.split('|'); return { type: 'port', partId: partId || null, portId, key: port.dataset.port }; }
   if (sym) return { type: 'symbol', symbolId: sym.dataset.sym };
   if (path) return { type: 'path', pathId: path.dataset.path };
+  if (frag) return { type: 'frag', fragId: frag.dataset.frag };
   return { type: 'none' };
 }
 
@@ -186,6 +192,14 @@ function onPointerDown(e) {
     emit();
     return;
   }
+  if (h.type === 'msg') {
+    store.ui.selection = { elementId: h.msgId, msgId: h.msgId };
+    beginDrag();
+    drag = { type: 'msg', msgId: h.msgId, start: p, moved: false, moveMessageTo };
+    emit();
+    return;
+  }
+  if (h.type === 'frag') { store.ui.selection = { elementId: h.fragId, fragId: h.fragId }; emit(); return; }
   if (h.type === 'path') {
     const path = d.paths.find((x) => x.id === h.pathId);
     const edge = resolveEdge(store.model, path.refId);
@@ -226,9 +240,22 @@ function onPointerMove(e) {
       dragStep((m) => {
         for (const id of drag.ids) {
           const s = getSymbol(m.diagrams[d.id], id); const o = drag.origin.get(id);
-          s.x = snap(o.x + dx); s.y = snap(o.y + dy);
+          s.x = snap(o.x + dx);
+          if (d.kind !== 'sd') s.y = snap(o.y + dy);   // a lifeline only moves sideways; time is not its to change
         }
       });
+      break;
+    }
+    case 'msg': {
+      // Dragging a message up or down moves it in time: the rows re-number as it passes them.
+      if (!drag.moved && Math.abs(p.y - drag.start.y) < 6) return;
+      drag.moved = true;
+      const want = seqAtY(scene, p.y);
+      const msg = store.model.elements[drag.msgId];
+      if (msg && msg.seq !== Math.min(want, scene.rows)) {
+        const { moveMessageTo } = drag;
+        dragStep((m) => { moveMessageTo(m, drag.msgId, Math.min(want, scene.rows)); });
+      }
       break;
     }
     case 'resize': {
@@ -273,6 +300,7 @@ function onPointerUp() {
   drag = null;
   const d = currentDiagram();
   if (dr.type === 'move') endDrag('Move', dr.moved);
+  else if (dr.type === 'msg') endDrag('Reorder messages', dr.moved);
   else if (dr.type === 'resize') endDrag('Resize', dr.moved);
   else if (dr.type === 'port') endDrag('Move port', dr.moved);
   else if (dr.type === 'marquee') {
@@ -296,6 +324,20 @@ async function placeNode(kind, h, p) {
     else createPort(d.contextId);
     return;
   }
+  if (kind === 'lifeline') {
+    const candidates = [...elementsOfKind(store.model, 'block'), ...elementsOfKind(store.model, 'actor')]
+      .map((b) => ({ value: b.id, label: `${b.name}  ‹${b.kind}›` }));
+    const choice = await pickOrCreate('New lifeline', 'Which block or actor does it represent?', candidates, 'New block');
+    if (!choice) { set({ tool: 'select' }); return; }
+    let representsId = choice.value;
+    if (choice.create) {
+      const blk = tryCommit('Add block', (m) => addElement(m, 'block', owningPackage(m, d.contextId).id, { name: choice.create }));
+      representsId = blk?.id;
+    }
+    createOnDiagram('lifeline', snap(p.x - 55), 0, { representsId });
+    return;
+  }
+  if (kind === 'fragment') { createOnDiagram('fragment', 0, 0, { seq: seqAtY(scene, p.y) }); return; }
   if (kind === 'part' || kind === 'refpart') {
     const blocks = elementsOfKind(store.model, 'block').filter((b) => b.id !== d.contextId);
     const choice = await pickOrCreate(kind === 'part' ? 'New part' : 'New reference', 'Which block is it an instance of?', blocks.map((b) => ({ value: b.id, label: b.name })), 'New block');
@@ -323,12 +365,12 @@ function pathClick(kind, h, p) {
   const pending = store.ui.pending;
   if (!end) {
     if (pending) set({ pending: null, hint: '' });
-    else hint(`${REL_KINDS[kind].label}: click the element it starts from.`);
+    else hint(`${pathToolLabel(kind)}: click the element it starts from.`);
     return;
   }
   if (kind === 'connector' && h.type === 'symbol' && store.model.elements[end.elementId]?.kind !== 'property') { hint('A connector joins parts and ports.'); return; }
   if (!pending) {
-    set({ pending: { from: end, at: p, cursor: p }, hint: `${REL_KINDS[kind].label}: now click the element it ends on. Esc cancels.` });
+    set({ pending: { from: end, at: p, cursor: p }, hint: `${pathToolLabel(kind)}: now click the element it ends on${MESSAGE_TOOLS[kind] ? ' (the same lifeline for a self-message)' : ''}. Esc cancels.` });
     return;
   }
   connect(kind, pending.from, end);
@@ -404,6 +446,15 @@ function onContextMenu(e) {
     const typeId = element.kind === 'property' && element.typeId;
     if (typeId) items.push({ label: `Go to type “${store.model.elements[typeId].name}”`, run: () => selectElement(typeId, { reveal: true }) });
     items.push('-', { label: 'Remove from diagram', key: 'Del', run: removeSelectionFromDiagram }, { label: 'Delete from model', key: '⇧Del', danger: true, run: deleteSelectionFromModel });
+  } else if (h.type === 'msg' || h.type === 'frag') {
+    const id = h.msgId || h.fragId;
+    store.ui.selection = h.msgId ? { elementId: id, msgId: id } : { elementId: id, fragId: id };
+    emit();
+    if (h.msgId) {
+      const msg = store.model.elements[id];
+      items.push({ label: 'Move earlier', run: () => placeMessage(id, msg.seq - 1) }, { label: 'Move later', run: () => placeMessage(id, msg.seq + 1) }, '-');
+    }
+    items.push({ label: `Delete ${h.msgId ? 'message' : 'fragment'} from model`, key: 'Del', danger: true, run: deleteSelectionFromModel });
   } else if (h.type === 'path') {
     const path = d.paths.find((x) => x.id === h.pathId);
     store.ui.selection = { pathId: path.id, refId: path.refId };

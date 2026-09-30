@@ -81,6 +81,24 @@ export function sampleModel() {
   const subj = addSymbol(m, ud, vehicle.id, 230, 60); subj.w = 440; subj.h = 430;
   place(ud, [[driver, 80, 150], [charger, 760, 340], [drive, 270, 110], [auth, 460, 230], [regen, 250, 250], [charge, 370, 390]]);
 
+  // Behaviour: how charging goes, as a sequence over the structure above.
+  const beh = pkg('Behaviour');
+  const ia = addElement(m, 'interaction', beh.id, { name: 'Charge battery', doc: 'The driver plugs in; the vehicle negotiates with the station and charges the battery until full.' });
+  const line = (name, rep) => addElement(m, 'lifeline', ia.id, { name, representsId: rep.id });
+  const lDriver = line('driver', driver); const lVehicle = line('vehicle', vehicle); const lStation = line('station', charger); const lBattery = line('battery', battery);
+  const msg = (from, to, name, msgKind = 'sync') => addElement(m, 'message', ia.id, { name, msgKind, fromId: from.id, toId: to.id });
+  msg(lDriver, lVehicle, 'plugIn');
+  msg(lVehicle, lStation, 'requestCharge(kW)', 'async');
+  msg(lStation, lVehicle, 'offer', 'reply');
+  msg(lVehicle, lBattery, 'startCharging');
+  msg(lBattery, lBattery, 'monitorCells');
+  msg(lBattery, lVehicle, 'charged', 'reply');
+  msg(lVehicle, lDriver, 'notify', 'async');
+  addElement(m, 'fragment', ia.id, { operator: 'loop', operands: [{ guard: 'until full' }], coveredIds: [lVehicle.id, lBattery.id], fromSeq: 4, toSeq: 6 });
+  addElement(m, 'fragment', ia.id, { operator: 'opt', operands: [{ guard: 'driver present' }], coveredIds: [lDriver.id, lVehicle.id], fromSeq: 7, toSeq: 7 });
+  const sd = addDiagram(m, 'sd', ia.id, 'Charging sequence', { contextId: ia.id });
+  [lDriver, lVehicle, lStation, lBattery].forEach((l, i) => addSymbol(m, sd, l.id, 60 + i * 210, 0));
+
   addDiagram(m, 'reqtable', reqs.id, 'Requirement table');
   addDiagram(m, 'matrix', reqs.id, 'Satisfy matrix', { relKind: 'satisfy', rowKind: 'block', colKind: 'requirement' });
   return m;

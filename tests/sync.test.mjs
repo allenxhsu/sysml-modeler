@@ -33,7 +33,7 @@ test('the contract file agrees with the sync module', () => {
   assert.equal(contract.id, APP_ID);
   assert.equal(contract.workspace, WORKSPACE);
   assert.equal(contract.connectScheme, APP_ID);
-  assert.ok(contract.static.include.includes('sync-kit/**'));
+  assert.ok(contract.static.include.some((p) => p.startsWith('sync-kit/')), 'the vendored sync-kit travels to the Portal');
   for (const excluded of ['tests', 'doc', 'macos', 'serve.sh']) assert.ok(!contract.static.include.some((p) => p.startsWith(excluded)), excluded);
 });
 

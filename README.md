@@ -131,6 +131,19 @@ the line. The same part is what an internal block diagram shows as a box.
 | Requirement (`req`) | requirement, test case, block, package, note | containment, derive, satisfy, verify, refine, trace |
 | Use case (`uc`) | actor, use case, subject (a block), note | association, include, extend, generalization |
 | Package (`pkg`) | package, block, note | containment, dependency |
+| Sequence (`sd`) | lifeline, fragment, note | call (sync), signal (async), reply, create, destroy |
+
+A sequence diagram shows an **interaction** (a package or block owns it): its
+lifelines each represent a block, part or actor; its messages are its children
+in time order (`seq`), so a diagram lists every message between the lifelines
+it draws and nothing has to be routed. Drop a block or actor from the tree to
+add a lifeline; pick a message tool and click two lifelines (the same one
+twice for a self-message); drag a message up or down to move it in time — the
+rows renumber and any fragment follows the messages it spanned; place a
+**Fragment** on a row for `alt` / `opt` / `loop` / `par` / `break` and set its
+guards, span and covered lifelines in the specification panel. A sync call
+draws an execution bar down to its reply; `create` puts the head on the
+message and `destroy` ends the line with a cross.
 
 Generated views, computed from the model on every render and editable in place:
 
@@ -173,6 +186,9 @@ element and opens a diagram that shows it. Every `code` is a stable identifier.
 | `actor-unused` | info | An actor takes part in no use case |
 | `block-unused` | info | A block appears on no diagram and is used by no other element |
 | `diagram-empty` | info | A diagram shows nothing |
+| `lifeline-unrepresented` | warning | A lifeline represents no block, part or actor |
+| `msg-ends` | error | A message lacks a lifeline at one end |
+| `fragment-uncovered` | info | A combined fragment covers no lifeline |
 
 The table lives in `src/model/validate.js` as `RULES`; `Help` prints it too.
 
@@ -181,6 +197,12 @@ The table lives in `src/model/validate.js` as `RULES`; `Help` prints it too.
 - **`*.sysml.json`** — the native format: the model object as JSON. Loading
   repairs what it can (a symbol of a deleted element is dropped and reported)
   and refuses what it cannot, with a sentence that says why.
+- **Interactions in XMI** — a `uml:Interaction` with `uml:Lifeline`s, each
+  message end a `MessageOccurrenceSpecification` covering its lifeline, and
+  `uml:CombinedFragment`s with operands and guards. A fragment's span in time
+  is not something UML's structure records without nesting the occurrences
+  inside its operands, so "model only" export loses the span (an import
+  stretches it over the whole interaction); the full export keeps everything.
 - **XMI export** — UML 2.5 XMI with SysML 1.x stereotype applications
   (`sysml:Block`, `sysml:Requirement` with `Id`/`Text`, `sysml:Satisfy`, …),
   the form Cameo / MagicDraw read. Parts and references are written as owned
@@ -204,12 +226,13 @@ src/model/types.js     the vocabulary: element, relationship and diagram kinds, 
 src/model/model.js     the repository: elements, relationships, diagrams, symbols, derived edges
 src/model/validate.js  the checks
 src/model/layout.js    symbol content and size, port placement, path routing — pure, DOM-free
+src/model/sequence.js  the sequence diagram's geometry: lifelines, message rows, fragment spans
 src/model/sample.js    the worked example
 src/state/store.js     state, snapshot undo/redo, autosave
 src/state/actions.js   editing commands shared by canvas, tree, panels and menus
 src/host.js            vendored from ../shell-kit: the page's half of the bridge to the macOS app (inert in a browser)
 src/io/                json (native), xmi, exportImage
-src/ui/                render (diagram → SVG markup), canvas, tree, spec, bottom, tables, toolbar, dialog
+src/ui/                render (diagram → SVG markup), sequence (its sd half), canvas, tree, spec, bottom, tables, toolbar, dialog
 ui-kit/                a copy of the shared kit, as in IDEF0
 macos/                 the macOS app: config + menu table on ../shell-kit's ToolkitShell, and its build script
 ```
@@ -219,7 +242,8 @@ later command-line tool — run them under Node.
 
 ## Not yet
 
-Activity, state machine, sequence and parametric diagrams; nested parts on an
+Activity, state machine and parametric diagrams; nested fragments and
+interaction uses (`ref`) on sequence diagrams; nested parts on an
 ibd; manual bend points on paths (routing is automatic); item flows; a
 command-line tool like IDEF0's. The app identity colour is set locally in
 `src/styles.css`; it belongs in `ui-kit/tokens/tokens.json` once the shared kit

@@ -8,7 +8,7 @@ import { children, diagramsOf, featureLabel, isFeature } from '../model/model.js
 import { showMenu, promptText, confirmDialog } from './dialog.js';
 import { DRAG_MIME } from './canvas.js';
 
-const KIND_ORDER = ['package', 'block', 'valueType', 'requirement', 'testCase', 'actor', 'useCase', 'comment', 'property', 'port', 'operation'];
+const KIND_ORDER = ['package', 'block', 'valueType', 'requirement', 'testCase', 'actor', 'useCase', 'interaction', 'comment', 'property', 'port', 'operation', 'lifeline', 'message', 'fragment'];
 
 export function renderTree(root) {
   clear(root);
@@ -92,12 +92,15 @@ function elementMenu(ev, e) {
   for (const kind of Object.keys(ELEMENT_KINDS)) {
     if (!canOwn(e.kind, kind)) continue;
     if (kind === 'property') for (const [pk, plabel] of Object.entries(PROP_KINDS)) items.push({ label: `New ${plabel.toLowerCase()} property`, run: () => createElement('property', e.id, { propKind: pk }) });
+    else if (kind === 'message' || kind === 'fragment') continue; // made on a sequence diagram, where they have ends and a span
     else items.push({ label: `New ${ELEMENT_KINDS[kind].label.toLowerCase()}`, run: () => createElement(kind, e.id) });
   }
   if (canOwnDiagram(e.kind)) {
     items.push('-');
     for (const [kind, meta] of Object.entries(DIAGRAM_KINDS)) {
-      if ((kind === 'ibd') !== (e.kind === 'block')) continue;
+      // A block owns its ibd, an interaction its sd, a package everything else.
+      const fits = e.kind === 'block' ? kind === 'ibd' : e.kind === 'interaction' ? kind === 'sd' : !['ibd', 'sd'].includes(kind);
+      if (!fits) continue;
       items.push({ label: `New ${meta.label.toLowerCase()}`, run: () => createDiagram(kind, e.id) });
     }
   }
